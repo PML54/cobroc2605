@@ -1,6 +1,4 @@
-// ==========================================
-// 📦 lib/services/storage_service.dart
-// ==========================================
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppParameters {
   final int rayonDensite;
@@ -19,7 +17,6 @@ class AppParameters {
     required this.inclureDistance,
   });
 
-  // Valeurs par défaut (basées sur votre code de juillet)
   factory AppParameters.defaults() {
     return const AppParameters(
       rayonDensite: 12,
@@ -31,7 +28,6 @@ class AppParameters {
     );
   }
 
-  // CopyWith pour faciliter les modifications
   AppParameters copyWith({
     int? rayonDensite,
     double? poidExposants,
@@ -50,34 +46,65 @@ class AppParameters {
     );
   }
 
-  // Conversion en Map pour la sérialisation
-  Map<String, dynamic> toMap() {
-    return {
-      'rayonDensite': rayonDensite,
-      'poidExposants': poidExposants,
-      'poidDensite': poidDensite,
-      'poidRevenu': poidRevenu,
-      'poidHistorique': poidHistorique,
-      'inclureDistance': inclureDistance,
-    };
-  }
-
-  // Création depuis un Map
-  factory AppParameters.fromMap(Map<String, dynamic> map) {
-    return AppParameters(
-      rayonDensite: map['rayonDensite'] as int? ?? 12,
-      poidExposants: (map['poidExposants'] as num?)?.toDouble() ?? 30.0,
-      poidDensite: (map['poidDensite'] as num?)?.toDouble() ?? 25.0,
-      poidRevenu: (map['poidRevenu'] as num?)?.toDouble() ?? 20.0,
-      poidHistorique: (map['poidHistorique'] as num?)?.toDouble() ?? 25.0,
-      inclureDistance: map['inclureDistance'] as bool? ?? true,
-    );
-  }
-
   @override
   String toString() {
     return 'AppParameters(rayon: ${rayonDensite}km, exposants: ${poidExposants.round()}%, '
         'densité: ${poidDensite.round()}%, revenu: ${poidRevenu.round()}%, '
         'historique: ${poidHistorique.round()}%, distance: $inclureDistance)';
+  }
+}
+
+class StorageService {
+  static const String _rayonDensiteKey = 'rayon_densite_cobrac';
+  static const String _poidExposantsKey = 'poid_exposants_cobrac';
+  static const String _poidDensiteKey = 'poid_densite_cobrac';
+  static const String _poidRevenuKey = 'poid_revenu_cobrac';
+  static const String _poidHistoriqueKey = 'poid_historique_cobrac';
+  static const String _inclureDistanceKey = 'inclure_distance_cobrac';
+  static const String _lieuActuelKey = 'lieu_actuel_cobrac';
+  static const String _monCoinKey = 'mon_coin_cobrac';
+
+  static Future<AppParameters> loadParameters() async {
+    final prefs = await SharedPreferences.getInstance();
+    return AppParameters(
+      rayonDensite: prefs.getInt(_rayonDensiteKey) ?? 12,
+      poidExposants: prefs.getDouble(_poidExposantsKey) ?? 30.0,
+      poidDensite: prefs.getDouble(_poidDensiteKey) ?? 25.0,
+      poidRevenu: prefs.getDouble(_poidRevenuKey) ?? 20.0,
+      poidHistorique: prefs.getDouble(_poidHistoriqueKey) ?? 25.0,
+      inclureDistance: prefs.getBool(_inclureDistanceKey) ?? true,
+    );
+  }
+
+  static Future<void> saveParameters(AppParameters params) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_rayonDensiteKey, params.rayonDensite);
+    await prefs.setDouble(_poidExposantsKey, params.poidExposants);
+    await prefs.setDouble(_poidDensiteKey, params.poidDensite);
+    await prefs.setDouble(_poidRevenuKey, params.poidRevenu);
+    await prefs.setDouble(_poidHistoriqueKey, params.poidHistorique);
+    await prefs.setBool(_inclureDistanceKey, params.inclureDistance);
+  }
+
+  static Future<int> loadLieuActuel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_lieuActuelKey) ?? 0;
+  }
+
+  static Future<void> saveLieuActuel(int lieu) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lieuActuelKey, lieu);
+  }
+
+  static Future<List<int>> loadMonCoin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_monCoinKey);
+    if (saved == null || saved.isEmpty) return [];
+    return saved.split(',').map(int.parse).toList();
+  }
+
+  static Future<void> saveMonCoin(List<int> deps) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_monCoinKey, deps.join(','));
   }
 }

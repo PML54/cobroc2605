@@ -11,10 +11,6 @@ import 'package:cobroc/pmltools.dart' show Brocabrac, GoToMarket, ManageCobrac;
 import 'package:diacritic/diacritic.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'datate.dart' show ConfigBrocante;
-
 // ========== IMPORTS DES SERVICES ==========
 import 'package:cobroc/services/geo_service.dart';
 import 'package:cobroc/services/scoring_service.dart';
@@ -40,15 +36,6 @@ class ManagerPML extends StatefulWidget {
 }
 
 class _ManagerPMLState extends State<ManagerPML> {
-  static const String _rayonDensiteKey = 'rayon_densite_cobrac';
-  static const String _poidExposantsKey = 'poid_exposants_cobrac';
-  static const String _poidDensiteKey = 'poid_densite_cobrac';
-  static const String _poidRevenuKey = 'poid_revenu_cobrac';
-  static const String _poidHistoriqueKey = 'poid_historique_cobrac';
-  static const String _inclureDistanceKey = 'inclure_distance_cobrac';
-  static const String _lieuActuelKey = 'lieu_actuel_cobrac';
-  static const String _monCoinKey = 'mon_coin_cobrac';
-
   // ========== SERVICE DE SCORING ==========
   late ScoringService scoringService;
   late LocationService locationService;
@@ -109,10 +96,7 @@ class _ManagerPMLState extends State<ManagerPML> {
 
   DateTime now = DateTime.now();
   int rayonDensite = 12;
-  Map<String, int> notesOptimales = {};
   Map<String, int> classementOptimal = {};
-  List<Brocabrac> brocantesTop10 = [];
-  bool affichageTop10 = false;
 
   Color colorTop1 = Colors.amber.shade700;
   Color colorTop2 = Colors.grey.shade400;
@@ -124,7 +108,7 @@ class _ManagerPMLState extends State<ManagerPML> {
   double poidHistorique = 25.0;
   bool inclureDistance = true;
 
-  static const String appVersion = 'Vers 260511 22:47';
+  static const String appVersion = 'Vers 260512 20:00';
 
   final cobracIconSize = 20.0;
   int nbBrocabrac = 0;
@@ -516,54 +500,12 @@ class _ManagerPMLState extends State<ManagerPML> {
     );
   }
 
-  // ========== MÉTHODES HELPERS POUR LES DATES ==========
-  DateTime _getNextActifDateTime(DateTime current) {
-    var quelJour = current.weekday;
-    switch (quelJour) {
-      case 6:
-        return current.add(const Duration(days: 1));
-      case 7:
-        return current.add(const Duration(days: 6));
-      default:
-        return current;
-    }
-  }
-
-  DateTime _getPrevActifDateTime(DateTime current) {
-    DateTime nowa = DateTime.now();
-    var quelJour = current.weekday;
-    DateTime nowTemp = current;
-
-    switch (quelJour) {
-      case 6:
-        current = current.subtract(const Duration(days: 6));
-        break;
-      case 7:
-        current = current.subtract(const Duration(days: 1));
-        break;
-    }
-
-    if (current.isBefore(nowa)) {
-      current = nowTemp;
-    }
-    return current;
-  }
-  // ======================================================
-
   // ========== MÉTHODES UTILISANT ScoringService ==========
 
   void calculerToutesLesNotes() {
     classementOptimal = scoringService.calculerTousLesClassements(
       brocanteBrocabrac,
       isInHistoric,
-    );
-    creerListeTop10();
-  }
-
-  void creerListeTop10() {
-    brocantesTop10 = scoringService.creerTop10(
-      brocanteBrocabrac,
-      classementOptimal,
     );
   }
 
@@ -705,11 +647,10 @@ class _ManagerPMLState extends State<ManagerPML> {
           }
         }
 
-        setState(() {
-          _brocky.brocStarBarycentre = nbdens.toString();
-        });
+        _brocky.brocStarBarycentre = nbdens.toString();
       }
     }
+    setState(() {});
   }
 
   void computeNewDistance() {
@@ -738,8 +679,6 @@ class _ManagerPMLState extends State<ManagerPML> {
         }
       }
     });
-    getListView();
-    getListViewReduce();
   }
 
   void computeNewDistanceFromSelect() {
@@ -1182,66 +1121,21 @@ Widget  getListView() {
     }
   }
 
-  bool _estDansTop10(String eventId) {
-    int? rang = classementOptimal[eventId];
-    return rang != null && rang <= 10;
-  }
-
-  String _getClassementAffichage(String eventId, String status) {
-    if (status != 'OK') {
-      return 'Statut: $status';
-    }
-
-    int? rang = classementOptimal[eventId];
-    if (rang == null || rang > 10) {
-      return '';
-    }
-
-    String affichage = '';
-    if (rang == 1) {
-      affichage += '🥇 1er';
-    } else if (rang == 2) {
-      affichage += '🥈 2ème';
-    } else if (rang == 3) {
-      affichage += '🥉 3ème';
-    } else if (rang <= 10) {
-      affichage += '$rangème';
-    }
-
-    return affichage;
-  }
-
-  String _getDensiteAffichage(String densiteStr) {
-    int densiteValue = int.tryParse(densiteStr) ?? 0;
-
-    if (densiteValue > 0) {
-      return ' - D:$densiteStr';
-    } else {
-      return '';
-    }
-  }
-
-  int _getRangClassement(String eventId) {
-    return classementOptimal[eventId] ?? 999;
-  }
-
   Future<void> _loadAllParametres() async {
-    final prefs = await SharedPreferences.getInstance();
+    final params = await StorageService.loadParameters();
     setState(() {
-      rayonDensite = prefs.getInt(_rayonDensiteKey) ?? 12;
-      poidExposants = prefs.getDouble(_poidExposantsKey) ?? 30.0;
-      poidDensite = prefs.getDouble(_poidDensiteKey) ?? 25.0;
-      poidRevenu = prefs.getDouble(_poidRevenuKey) ?? 20.0;
-      poidHistorique = prefs.getDouble(_poidHistoriqueKey) ?? 25.0;
-      inclureDistance = prefs.getBool(_inclureDistanceKey) ?? true;
+      rayonDensite = params.rayonDensite;
+      poidExposants = params.poidExposants;
+      poidDensite = params.poidDensite;
+      poidRevenu = params.poidRevenu;
+      poidHistorique = params.poidHistorique;
+      inclureDistance = params.inclureDistance;
     });
   }
 
   Future<void> _loadLieuActuel() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedLieu = prefs.getInt(_lieuActuelKey);
-
-    if (savedLieu != null && savedLieu >= 0 && savedLieu <= 3) {
+    final savedLieu = await StorageService.loadLieuActuel();
+    if (savedLieu >= 0 && savedLieu <= 3) {
       setState(() {
         lieuActuel = savedLieu;
       });
@@ -1250,30 +1144,27 @@ Widget  getListView() {
   }
 
   Future<void> _saveAllParametres() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_rayonDensiteKey, rayonDensite);
-    await prefs.setDouble(_poidExposantsKey, poidExposants);
-    await prefs.setDouble(_poidDensiteKey, poidDensite);
-    await prefs.setDouble(_poidRevenuKey, poidRevenu);
-    await prefs.setDouble(_poidHistoriqueKey, poidHistorique);
-    await prefs.setBool(_inclureDistanceKey, inclureDistance);
+    await StorageService.saveParameters(AppParameters(
+      rayonDensite: rayonDensite,
+      poidExposants: poidExposants,
+      poidDensite: poidDensite,
+      poidRevenu: poidRevenu,
+      poidHistorique: poidHistorique,
+      inclureDistance: inclureDistance,
+    ));
   }
 
   Future<void> _saveLieuActuel(int lieu) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_lieuActuelKey, lieu);
+    await StorageService.saveLieuActuel(lieu);
   }
 
   Future<void> _saveMonCoin(List<int> deps) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_monCoinKey, deps.join(','));
+    await StorageService.saveMonCoin(deps);
   }
 
   Future<void> _loadMonCoin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_monCoinKey);
-    if (saved != null && saved.isNotEmpty) {
-      final deps = saved.split(',').map(int.parse).toList();
+    final deps = await StorageService.loadMonCoin();
+    if (deps.isNotEmpty) {
       setState(() {
         MonCoin.clear();
         MonCoin.addAll(deps);
