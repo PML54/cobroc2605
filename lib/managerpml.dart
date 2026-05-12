@@ -11,6 +11,7 @@ import 'package:cobroc/pmltools.dart' show Brocabrac, GoToMarket, ManageCobrac;
 import 'package:diacritic/diacritic.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 // ========== IMPORTS DES SERVICES ==========
 import 'package:cobroc/services/geo_service.dart';
 import 'package:cobroc/services/scoring_service.dart';
@@ -21,6 +22,7 @@ import 'package:cobroc/services/location_service.dart';
 import 'package:cobroc/services/storage_service.dart';
 import 'package:cobroc/models/filtre_exposants.dart';
 import 'package:cobroc/widgets/brocante/rayon_dialog.dart';
+
 // Ajouter après les autres imports de widgets
 import 'package:cobroc/widgets/brocante/brocante_list_view.dart';
 import 'package:cobroc/widgets/brocante/brocante_list_reduce.dart';
@@ -36,9 +38,23 @@ class ManagerPML extends StatefulWidget {
 }
 
 class _ManagerPMLState extends State<ManagerPML> {
+  // Index statiques construits une seule fois depuis les données statiques
+  static final Map<String, Commune> _communeIndex = () {
+    final map = <String, Commune>{};
+    for (final c in listCommunes) {
+      map.putIfAbsent(c.ville, () => c);
+    }
+    return map;
+  }();
+
+  static final Set<String> _historicIndex = {
+    for (final h in listHistoric) h.villeNormalized
+  };
+
   // ========== SERVICE DE SCORING ==========
   late ScoringService scoringService;
   late LocationService locationService;
+
   // ========================================
 
   // Variables GPS
@@ -56,19 +72,13 @@ class _ManagerPMLState extends State<ManagerPML> {
   var pifoMetre = 1.27;
   int nbStepAsync = 0;
   String dateSelected = "2026-05-10";
-  String dateSelectedPrev = "2026-05-10";
   String debutHttps = "https://brocabrac.fr/recherche?ou=";
   String finHttps = "&c=bro,vgr,bra&d= ";
-  String ipv4name = "";
-  String dateKey = "2024-05-04";
   String dimancheInitial = "2024-10-13";
-  String jourActif = "2024-10-13";
   late DateTime nowInit;
   late DateTime nowActif;
-  late DateTime _brocanteDay; // référence exclusive de ← → > < (non affectée par +1/-1)
-  DateTime actifPeanuts = DateTime(2026, 05, 11);
+  late DateTime _brocanteDay; // référence exclusive ← → > < (non affectée par +1/-1)
   var secureHistory = 1;
-  DateTime brocabracDate = DateTime(2026, 05, 11);
   List<Brocabrac> brocanteBrocabrac = [];
   List<Brocabrac> brocanteBrocabracBis = [];
 
@@ -86,9 +96,6 @@ class _ManagerPMLState extends State<ManagerPML> {
   double rayonBarycentre = 20.0;
   Color colorKO = Colors.red;
   Color colorOK = Colors.green;
-  Color colorVVF = Colors.grey;
-  Color colorMORV = Colors.grey;
-  Color colorLAR = Colors.grey;
   Color colorBROC = Colors.grey;
   Color colorMAISON = Colors.grey;
   bool _vgToggle = true; // true = bouton affiche VG (action VG au prochain tap)
@@ -108,20 +115,15 @@ class _ManagerPMLState extends State<ManagerPML> {
   double poidHistorique = 25.0;
   bool inclureDistance = true;
 
-  static const String appVersion = 'Vers 260512 20:00';
+  static const String appVersion = 'Vers 260512 20:15';
 
   final cobracIconSize = 20.0;
   int nbBrocabrac = 0;
   int nbBrocOK = 0;
   int maxStepAsync = 6;
   List fullMaster = [];
-  List<Color> colorBrocante = [];
-  int nbContactReduce = 0;
   var centralCommune = "";
   var centraleventId = "";
-  var centralCompany = "";
-
-  late GoToMarket mapTrip;
   List<int> MonCoinPortbail = [50, 14, 22, 29, 61, 53, 76];
   List<int> MonCoinLarris = [27, 77, 95, 60, 78, 92, 91, 93, 94, 76];
   List<int> MonCoinLoon = [62, 59, 80, 60, 2];
@@ -141,7 +143,8 @@ class _ManagerPMLState extends State<ManagerPML> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: FiltreCategorieExposants.values.map((filtre) {
-              return _buildFiltreOption(FilterService.getLabelFiltre(filtre), filtre);
+              return _buildFiltreOption(
+                  FilterService.getLabelFiltre(filtre), filtre);
             }).toList(),
           ),
           actions: [
@@ -181,10 +184,6 @@ class _ManagerPMLState extends State<ManagerPML> {
     return filtreExposantsActif == FiltreCategorieExposants.tous
         ? Colors.white
         : Colors.amber;
-  }
-
-  Color _getCouleurFiltreHistorique() {
-    return afficherSeulementHistorique ? Colors.amber : Colors.white;
   }
 
   // ===================================================================
@@ -229,7 +228,8 @@ class _ManagerPMLState extends State<ManagerPML> {
                       child: TextButton(
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.greenAccent,
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: RoundedRectangleBorder(
@@ -255,7 +255,9 @@ class _ManagerPMLState extends State<ManagerPML> {
                           nbStepAsync = 0;
                           readBrocabrac();
                         },
-                        child: Text(_vgToggle ? 'VG' : 'VM', style: const TextStyle(color: Colors.black, fontSize: 12)),
+                        child: Text(_vgToggle ? 'VG' : 'VM',
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 12)),
                       ),
                     ),
                   ),
@@ -274,7 +276,8 @@ class _ManagerPMLState extends State<ManagerPML> {
                       icon: Stack(
                         children: [
                           const Icon(Icons.group),
-                          if (filtreExposantsActif != FiltreCategorieExposants.tous)
+                          if (filtreExposantsActif !=
+                              FiltreCategorieExposants.tous)
                             Positioned(
                               right: 0,
                               top: 0,
@@ -315,7 +318,8 @@ class _ManagerPMLState extends State<ManagerPML> {
               children: [
                 Container(
                   color: Colors.blue.shade700,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   child: Row(
                     children: [
                       GestureDetector(
@@ -349,16 +353,17 @@ class _ManagerPMLState extends State<ManagerPML> {
                           nbStepAsync = 0;
                           nbBrocabrac = 0;
                           setState(() {
-                            nowActif = nowActif.subtract(const Duration(days: 1));
-                            actifPeanuts = nowActif;
-                            dateSelected = DateService.dateToString(nowActif);
+                            nowActif =
+                                nowActif.subtract(const Duration(days: 1));
+                                          dateSelected = DateService.dateToString(nowActif);
                           });
                           readBrocabrac();
                         },
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        DateService.formatDateBrocante(dateSelected, jours, mois),
+                        DateService.formatDateBrocante(
+                            dateSelected, jours, mois),
                         style: const TextStyle(
                           fontSize: 14.0,
                           color: Colors.white,
@@ -378,8 +383,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                           nbBrocabrac = 0;
                           setState(() {
                             nowActif = nowActif.add(const Duration(days: 1));
-                            actifPeanuts = nowActif;
-                            dateSelected = DateService.dateToString(nowActif);
+                                          dateSelected = DateService.dateToString(nowActif);
                           });
                           readBrocabrac();
                         },
@@ -388,7 +392,8 @@ class _ManagerPMLState extends State<ManagerPML> {
                   ),
                 ),
                 Expanded(
-                  child: Row(children: <Widget>[getListView(), getListViewReduce()]),
+                  child: Row(
+                      children: <Widget>[getListView(), getListViewReduce()]),
                 ),
               ],
             ),
@@ -409,10 +414,10 @@ class _ManagerPMLState extends State<ManagerPML> {
                         nbStepAsync = 0;
                         nbBrocabrac = 0;
                         setState(() {
-                          _brocanteDay = HolidayService.prevBrocanteDayInWeek(_brocanteDay);
+                          _brocanteDay = HolidayService.prevBrocanteDayInWeek(
+                              _brocanteDay);
                           nowActif = _brocanteDay;
-                          actifPeanuts = nowActif;
-                          dateSelected = DateService.dateToString(nowActif);
+                                      dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -430,10 +435,10 @@ class _ManagerPMLState extends State<ManagerPML> {
                         nbStepAsync = 0;
                         nbBrocabrac = 0;
                         setState(() {
-                          _brocanteDay = HolidayService.nextBrocanteDayInWeek(_brocanteDay);
+                          _brocanteDay = HolidayService.nextBrocanteDayInWeek(
+                              _brocanteDay);
                           nowActif = _brocanteDay;
-                          actifPeanuts = nowActif;
-                          dateSelected = DateService.dateToString(nowActif);
+                                      dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -467,8 +472,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                         nbBrocabrac = 0;
                         setState(() {
                           nowActif = HolidayService.nextBrocanteDay(nowActif);
-                          actifPeanuts = nowActif;
-                          dateSelected = DateService.dateToString(nowActif);
+                                      dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -488,8 +492,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                         setState(() {
                           nowActif = HolidayService.prevBrocanteDay(
                               nowActif, DateTime.now());
-                          actifPeanuts = nowActif;
-                          dateSelected = DateService.dateToString(nowActif);
+                                      dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -573,7 +576,8 @@ class _ManagerPMLState extends State<ManagerPML> {
 
       _saveLieuActuel(lieuActuel);
 
-      if (lieuActuel != 3 || (latitudeGPS != null && departementsGPS.isNotEmpty)) {
+      if (lieuActuel != 3 ||
+          (latitudeGPS != null && departementsGPS.isNotEmpty)) {
         nbStepAsync = 0;
         readBrocabrac();
       }
@@ -582,31 +586,34 @@ class _ManagerPMLState extends State<ManagerPML> {
 
   void completeInfosPlus() {
     for (Brocabrac _brocky in brocanteBrocabrac) {
-      String thatVille = _brocky.brocLocality;
-      _brocky.brocDejaVu = "New";
-      if (isInHistoric(thatVille)) _brocky.brocDejaVu = "";
+      final thatVille = _brocky.brocLocality;
+      _brocky.brocDejaVu = isInHistoric(thatVille) ? "" : "New";
       _brocky.revenu = 0;
-      for (Commune _communy in listCommunes) {
-        if (_communy.ville == thatVille) {
-          _brocky.revenu = _communy.revenu.toInt();
-          _brocky.brocStarRevenu = "0";
-          if (_brocky.revenu > 10000) _brocky.brocStarRevenu = "1";
-          if (_brocky.revenu > 15000) _brocky.brocStarRevenu = "2";
-          if (_brocky.revenu > 20000) _brocky.brocStarRevenu = "3";
-          if (_brocky.revenu > 25000) _brocky.brocStarRevenu = "4";
-          if (_brocky.revenu >= 30000) _brocky.brocStarRevenu = "5";
-          break;
-        }
+      final commune = _communeIndex[thatVille];
+      if (commune != null) {
+        _brocky.revenu = commune.revenu.toInt();
+        final rev = _brocky.revenu;
+        _brocky.brocStarRevenu = rev >= 30000 ? "5"
+            : rev > 25000 ? "4"
+            : rev > 20000 ? "3"
+            : rev > 15000 ? "2"
+            : rev > 10000 ? "1"
+            : "0";
       }
     }
 
     for (Brocabrac _brocky in brocanteBrocabrac) {
       _brocky.brocStarNbExposants = "0";
-      if (_brocky.brocNbExposants == "Moins de 50") _brocky.brocStarNbExposants = "25";
-      if (_brocky.brocNbExposants == "De 50 à 100") _brocky.brocStarNbExposants = "75";
-      if (_brocky.brocNbExposants == "De 100 à 200") _brocky.brocStarNbExposants = "150";
-      if (_brocky.brocNbExposants == "De 200 à 300") _brocky.brocStarNbExposants = "250";
-      if (_brocky.brocNbExposants == "Plus de 300") _brocky.brocStarNbExposants = "300";
+      if (_brocky.brocNbExposants == "Moins de 50")
+        _brocky.brocStarNbExposants = "25";
+      if (_brocky.brocNbExposants == "De 50 à 100")
+        _brocky.brocStarNbExposants = "75";
+      if (_brocky.brocNbExposants == "De 100 à 200")
+        _brocky.brocStarNbExposants = "150";
+      if (_brocky.brocNbExposants == "De 200 à 300")
+        _brocky.brocStarNbExposants = "250";
+      if (_brocky.brocNbExposants == "Plus de 300")
+        _brocky.brocStarNbExposants = "300";
     }
 
     int nbInside = -1;
@@ -664,21 +671,14 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
 
     completeInfosPlus();
-    brocanteBrocabrac.sort((a, b) => a.brocFromCenter.compareTo(b.brocFromCenter));
-    colorBrocante.clear();
+    brocanteBrocabrac
+        .sort((a, b) => a.brocFromCenter.compareTo(b.brocFromCenter));
 
     int thatMaster = 0;
-    setState(() {
-      for (Brocabrac _brocky in brocanteBrocabrac) {
-        thatMaster++;
-        _brocky.brocMaster = thatMaster;
-        if (_brocky.brocEventStatus == "OK") {
-          colorBrocante.add(Colors.green);
-        } else {
-          colorBrocante.add(Colors.red);
-        }
-      }
-    });
+    for (Brocabrac _brocky in brocanteBrocabrac) {
+      _brocky.brocMaster = ++thatMaster;
+    }
+    setState(() {});
   }
 
   void computeNewDistanceFromSelect() {
@@ -692,7 +692,8 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
 
     brocanteBrocabracBis = List.from(brocanteBrocabrac);
-    brocanteBrocabracBis.sort((a, b) => a.brocFromSelect.compareTo(b.brocFromSelect));
+    brocanteBrocabracBis
+        .sort((a, b) => a.brocFromSelect.compareTo(b.brocFromSelect));
 
     setState(() {
       nbBrocOK = brocanteBrocabracBis
@@ -714,7 +715,7 @@ class _ManagerPMLState extends State<ManagerPML> {
   void copyInfos() {
     copieColler = "";
     copieColler =
-    "Localité;Code Postal;Km de  Pontoise;km depuis Choix;Nom;Organisateur;Exposants;Adresse;Date;Revenu;Concentration;Déjà Faite;Statut;Like;Description\n";
+        "Localité;Code Postal;Km de  Pontoise;km depuis Choix;Nom;Organisateur;Exposants;Adresse;Date;Revenu;Concentration;Déjà Faite;Statut;Like;Description\n";
     for (Brocabrac _brocky in brocanteBrocabrac) {
       copieColler = "$copieColler${_brocky.brocLocality};";
       copieColler = "$copieColler${_brocky.brocPostal};";
@@ -777,16 +778,6 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
   }
 
-  Color _getCouleurLieu() {
-    switch (lieuActuel) {
-      case 0: return Colors.red;
-      case 1: return Colors.orange;
-      case 2: return Colors.yellow;
-      case 3: return Colors.lime;
-      default: return Colors.lime;
-    }
-  }
-
   Future<String> getInfoBrocabrac(Uri bigUrl) async {
     NetworkHelper networkHelper = NetworkHelper();
     await networkHelper.getDataBrocabrac(bigUrl, fullMaster);
@@ -814,16 +805,20 @@ class _ManagerPMLState extends State<ManagerPML> {
 
   String getLieuActuelNom() {
     switch (lieuActuel) {
-      case 0: return 'Larris';
-      case 1: return 'Portbail';
-      case 2: return 'Loon';
+      case 0:
+        return 'Larris';
+      case 1:
+        return 'Portbail';
+      case 2:
+        return 'Loon';
       case 3:
         if (departementGPS != null) {
           return 'GPS ($departementGPS)';
         } else {
           return 'GPS (...)';
         }
-      default: return 'Larris';
+      default:
+        return 'Larris';
     }
   }
 
@@ -862,7 +857,9 @@ class _ManagerPMLState extends State<ManagerPML> {
   }
 
   void _appliquerLieuGPS() {
-    if (latitudeGPS != null && longitudeGPS != null && departementsGPS.isNotEmpty) {
+    if (latitudeGPS != null &&
+        longitudeGPS != null &&
+        departementsGPS.isNotEmpty) {
       MonCoin.clear();
       MonCoin.addAll(departementsGPS);
       latitudeSelect = latitudeGPS!;
@@ -873,7 +870,7 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
   }
 
-Widget  getListView() {
+  Widget getListView() {
     List<Brocabrac> brocantesAffichees = FilterService.appliquerFiltres(
       brocantes: brocanteBrocabrac,
       filtreExposants: filtreExposantsActif,
@@ -900,8 +897,10 @@ Widget  getListView() {
           centraleventId = brocante.eventId;
           centralCommune = brocante.brocLocality;
         });
-        Brocabrac thisBrocabrac = getCurrentBrocabrac(centralCommune, centraleventId);
-        ManageCobrac manageCobrac = ManageCobrac(brocanteBrocabrac, thisBrocabrac);
+        Brocabrac thisBrocabrac =
+            getCurrentBrocabrac(centralCommune, centraleventId);
+        ManageCobrac manageCobrac =
+            ManageCobrac(brocanteBrocabrac, thisBrocabrac);
 
         Navigator.push(
           context,
@@ -914,10 +913,11 @@ Widget  getListView() {
       onDoubleTap: (brocante) {
         setState(() {
           if (brocante.brocEventStatus == "OK") {
-            if (brocante.brocLove == "❤") {  // ✅ CŒUR ROUGE
+            if (brocante.brocLove == "❤") {
+              // ✅ CŒUR ROUGE
               brocante.brocLove = "";
             } else {
-              brocante.brocLove = "❤";  // ✅ CŒUR ROUGE
+              brocante.brocLove = "❤"; // ✅ CŒUR ROUGE
             }
           }
         });
@@ -938,39 +938,6 @@ Widget  getListView() {
       isInHistoric: isInHistoric,
       secureHistory: secureHistory,
     );
-  }
-
-  List<String> getTop10() {
-    List<String> top10 = [];
-
-    var entriesTriees = classementOptimal.entries.toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
-
-    for (int i = 0; i < 10 && i < entriesTriees.length; i++) {
-      String eventId = entriesTriees[i].key;
-      int rang = entriesTriees[i].value;
-
-      Brocabrac? brocante = brocanteBrocabrac
-          .cast<Brocabrac?>()
-          .firstWhere((b) => b?.eventId == eventId, orElse: () => null);
-
-      if (brocante != null) {
-        String medal = '';
-        if (rang == 1) {
-          medal = '🥇';
-        } else if (rang == 2)
-          medal = '🥈';
-        else if (rang == 3)
-          medal = '🥉';
-        else
-          medal = '🏆';
-
-        top10.add(
-            '$medal $rang. ${brocante.brocLocality} (${brocante.brocFromCenter}km)');
-      }
-    }
-
-    return top10;
   }
 
   @override
@@ -1015,11 +982,7 @@ Widget  getListView() {
       nowInit = nowTemp.add(Duration(days: 7 - nowTemp.weekday));
       nowActif = nowInit;
       _brocanteDay = nowActif;
-      actifPeanuts = nowActif;
       centralCommune = versionNum;
-      colorVVF = colorKO;
-      colorMORV = colorKO;
-      colorLAR = colorOK;
 
       if (lieuActuel == 0) {
         latitudeRef = latitudeLarris;
@@ -1034,16 +997,7 @@ Widget  getListView() {
   }
 
   bool isInHistoric(String thatVille) {
-    String normalizedThatVille = normalizeString(thatVille);
-
-    for (Historic _his in listHistoric) {
-      String normalizedHistVille = _his.villeNormalized;
-
-      if (normalizedHistVille == normalizedThatVille) {
-        return true;
-      }
-    }
-    return false;
+    return _historicIndex.contains(normalizeString(thatVille));
   }
 
   String normalizeString(String str) {
@@ -1053,29 +1007,36 @@ Widget  getListView() {
 
   void readBrocabrac() {
     DateTime dt = DateTime.parse(dateSelected);
-    var now = DateTime.now();
-    var todayDate = DateTime(now.year, now.month, now.day);
+    final todayDate = DateTime(now.year, now.month, now.day);
 
     if (dt.isBefore(todayDate)) {
-    } else {
-      if (nbStepAsync > 0) return;
-      nbBrocOK = 0;
-      nbBrocabrac = 0;
-      brocanteBrocabrac.clear();
-      brocanteBrocabracBis.clear();
-      classementOptimal.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Date dans le passé — choisissez une date à venir.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
-      nbStepAsync = 1;
+    if (nbStepAsync > 0) return;
+    nbBrocOK = 0;
+    nbBrocabrac = 0;
+    brocanteBrocabrac.clear();
+    brocanteBrocabracBis.clear();
+    classementOptimal.clear();
 
-      for (int dipart in MonCoin) {
-        String quelCoin = dipart.toString();
-        String paramHttps = debutHttps + quelCoin + finHttps + dateSelected;
-        Uri myUrl = Uri.parse(paramHttps);
+    nbStepAsync = 1;
 
-        getInfoBrocabrac(myUrl).then((_) {
-          updateNbBrocOK();
-        });
-      }
+    for (int dipart in MonCoin) {
+      String quelCoin = dipart.toString();
+      String paramHttps = debutHttps + quelCoin + finHttps + dateSelected;
+      Uri myUrl = Uri.parse(paramHttps);
+
+      getInfoBrocabrac(myUrl).then((_) {
+        updateNbBrocOK();
+      });
     }
   }
 
@@ -1114,7 +1075,9 @@ Widget  getListView() {
         longitudeRef = longitudeLoon;
         break;
       case 3:
-        if (latitudeGPS != null && longitudeGPS != null && departementsGPS.isNotEmpty) {
+        if (latitudeGPS != null &&
+            longitudeGPS != null &&
+            departementsGPS.isNotEmpty) {
           _appliquerLieuGPS();
         }
         break;
