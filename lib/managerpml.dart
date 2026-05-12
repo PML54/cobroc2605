@@ -115,7 +115,7 @@ class _ManagerPMLState extends State<ManagerPML> {
   double poidHistorique = 25.0;
   bool inclureDistance = true;
 
-  static const String appVersion = 'Vers 260512 20:20';
+  static const String appVersion = 'Vers 6.51';
 
   final cobracIconSize = 20.0;
   int nbBrocabrac = 0;
