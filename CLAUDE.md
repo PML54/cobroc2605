@@ -49,7 +49,8 @@ flutter pub upgrade
 | `GeoService` | Haversine distance calculation |
 | `ScoringService` | Weighted scoring (exposants, density, revenue, historic, distance) → ranking |
 | `FilterService` | Filter brocante list by exposant count category or historic-only |
-| `DateService` | Compute next Saturday/Sunday/weekday offsets for the date picker |
+| `DateService` | Compute next Saturday/Sunday date strings for the date picker |
+| `HolidayService` | French public holiday calendar (Pâques, Ascension, etc.) + brocante-day logic (Sam/Dim/Férié); week-level and inter-week navigation |
 | `LocationService` | GPS acquisition + reverse geocode to French département |
 | `StorageService` | `SharedPreferences` persistence (rayon, scoring weights, active location) |
 
@@ -59,6 +60,7 @@ flutter pub upgrade
 |---|---|
 | `managerpml.dart` | Main list screen — entry point, orchestrates everything |
 | `detailedBrocante.dart` | Detail view for a single brocante (long-press from list) |
+| `zee.dart` | Alternative detail view (`DetailBroc`) with historic-analysis panel (`analyzeBrocante`) |
 | `monplan.dart` | Interactive map using `flutter_map` + OpenStreetMap tiles |
 | `mapcobrac.dart` | Département-grid map view for selecting a custom trip |
 | `departements.dart` | France département selector using `interactive_country_map` |
@@ -90,3 +92,22 @@ flutter pub upgrade
 ### Scoring
 
 `ScoringService.calculerScoreOptimal()` combines four weighted criteria (exposants, local density, commune revenue, historic visits) with an optional distance factor. Weights are persisted via `SharedPreferences` and configurable from the settings dialog. The top 3 ranked events are highlighted with gold/silver/bronze colors in the list.
+
+### Historic analysis (`zee.dart`)
+
+`analyzeBrocante(ville)` queries `listHistoric` for all past visits to a city and returns a composite score (qualité, taille, potentiel achat, commentaires, note globale). Displayed in the `DetailBroc` detail screen as an analysis panel. Simple keyword-based sentiment from `histAvis`/`histDetail` fields.
+
+### Key dependencies
+
+| Package | Use |
+|---|---|
+| `http` | HTTP requests to brocabrac.fr |
+| `html` | HTML parsing, ld+json extraction |
+| `google_maps_flutter` | Native Google Maps (used in `zee.dart` single-marker view) |
+| `flutter_map` + `latlong2` | OSM tile maps (`monplan.dart`) |
+| `interactive_country_map` | Département selector (`departements.dart`) |
+| `geolocator` + `geocoding` | GPS + reverse geocode |
+| `shared_preferences` | Settings persistence |
+| `diacritic` | Accent-insensitive string comparison |
+| `intl` | Date formatting |
+| `sqlite3` | Declared dependency (not actively used in current screens) |
