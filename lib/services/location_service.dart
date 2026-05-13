@@ -147,6 +147,27 @@ class LocationService {
     }
   }
 
+  Future<LocationData?> obtenirPositionDepuisCoords(double lat, double lon) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lon);
+      if (placemarks.isNotEmpty) {
+        final codePostal = placemarks.first.postalCode;
+        if (codePostal != null && codePostal.length >= 2) {
+          final departement = codePostal.substring(0, 2);
+          return LocationData(
+            latitude: lat,
+            longitude: lon,
+            departement: departement,
+            departementsProches: obtenirDepartementsLimitrophes(departement),
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   List<int> obtenirDepartementsLimitrophes(String departement) {
     List<int> deps = [int.parse(departement)];
 

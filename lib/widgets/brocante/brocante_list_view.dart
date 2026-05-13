@@ -32,19 +32,11 @@ class BrocanteListView extends StatelessWidget {
           Brocabrac brocante = brocantes[index];
           bool estTop10 = _estDansTop10(brocante.eventId);
           int rang = _getRangClassement(brocante.eventId);
+          bool estKO = brocante.brocEventStatus != 'OK';
 
-          // ========== LOGIQUE DE COULEUR COMPLÈTE ==========
-          Color couleurTexte;
-          if (brocante.brocEventStatus != 'OK') {
-            couleurTexte = Colors.red; // KO = ROUGE
-          } else if (estTop10) {
-            couleurTexte = getCouleurClassement(brocante.eventId, brocante.brocEventStatus);
-          } else if (brocante.brocDejaVu == "New") {
-            couleurTexte = Colors.black;
-          } else {
-            couleurTexte = Colors.blue; // Déjà vue
-          }
-          // ==================================================
+          final couleurTexte = estKO
+              ? const Color(0xFFD50000) // rouge écarlate
+              : Colors.black;
 
           return InkWell(
             onTap: () => onTap(brocante),
@@ -56,6 +48,7 @@ class BrocanteListView extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      if (estKO) const Text("KO ", style: TextStyle(fontSize: 11, color: Color(0xFFD50000), fontWeight: FontWeight.bold)),
                       if (rang == 1) const Text("🥇 ", style: TextStyle(fontSize: 12)),
                       if (rang == 2) const Text("🥈 ", style: TextStyle(fontSize: 12)),
                       if (rang == 3) const Text("🥉 ", style: TextStyle(fontSize: 12)),
@@ -74,15 +67,14 @@ class BrocanteListView extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    '${brocante.brocFromCenter} km - ${brocante.brocStarNbExposants} Exp${_getDensiteAffichage(brocante.brocStarBarycentre)} ${brocante.brocLove}\n${_getClassementAffichage(brocante.eventId, brocante.brocEventStatus)}',
+                    '${brocante.brocFromCenter} km - ${brocante.brocStarNbExposants} Exp${_getDensiteAffichage(brocante.brocStarBarycentre)} ${brocante.brocLove}',
                     style: TextStyle(
                       fontSize: 10,
                       fontFamily: 'Serif',
-                      color: Colors.black,
+                      color: couleurTexte,
                       fontWeight: rang <= 3 ? FontWeight.w500 : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
                   ),
                 ],
               ),
@@ -115,20 +107,6 @@ class BrocanteListView extends StatelessWidget {
 
   int _getRangClassement(String eventId) {
     return classementOptimal[eventId] ?? 999;
-  }
-
-  String _getClassementAffichage(String eventId, String status) {
-    if (status != 'OK') return 'Statut: $status';
-
-    int? rang = classementOptimal[eventId];
-    if (rang == null || rang > 10) return '';
-
-    if (rang == 1) return '🥇 1er';
-    if (rang == 2) return '🥈 2ème';
-    if (rang == 3) return '🥉 3ème';
-    if (rang <= 10) return '$rangème';
-
-    return '';
   }
 
   String _getDensiteAffichage(String densiteStr) {

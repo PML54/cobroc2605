@@ -26,6 +26,7 @@ import 'package:cobroc/widgets/brocante/rayon_dialog.dart';
 // Ajouter après les autres imports de widgets
 import 'package:cobroc/widgets/brocante/brocante_list_view.dart';
 import 'package:cobroc/widgets/brocante/brocante_list_reduce.dart';
+import 'package:cobroc/villes_france.dart';
 // ==========================================
 
 class ManagerPML extends StatefulWidget {
@@ -64,11 +65,16 @@ class _ManagerPMLState extends State<ManagerPML> {
   List<int> departementsGPS = [];
   bool isLoadingGPS = false;
 
+  // GPS simulé
+  bool _gpsSimule = false;
+  double _latSimulee = 46.5;
+  double _lonSimulee = 2.5;
+
   // Variables pour les filtres
   FiltreCategorieExposants filtreExposantsActif = FiltreCategorieExposants.tous;
   bool afficherSeulementHistorique = false;
 
-  var versionNum = '250626-1000';
+  var versionNum = '260513-0717';
   var pifoMetre = 1.27;
   int nbStepAsync = 0;
   String dateSelected = "2026-05-10";
@@ -77,7 +83,8 @@ class _ManagerPMLState extends State<ManagerPML> {
   String dimancheInitial = "2024-10-13";
   late DateTime nowInit;
   late DateTime nowActif;
-  late DateTime _brocanteDay; // référence exclusive ← → > < (non affectée par +1/-1)
+  late DateTime
+      _brocanteDay; // référence exclusive ← → > < (non affectée par +1/-1)
   var secureHistory = 1;
   List<Brocabrac> brocanteBrocabrac = [];
   List<Brocabrac> brocanteBrocabracBis = [];
@@ -115,19 +122,25 @@ class _ManagerPMLState extends State<ManagerPML> {
   double poidHistorique = 25.0;
   bool inclureDistance = true;
 
-  static const String appVersion = 'Vers 6.51';
+  static const String appVersion = 'Ver 513.0915';
 
   final cobracIconSize = 20.0;
   int nbBrocabrac = 0;
   int nbBrocOK = 0;
-  int maxStepAsync = 6;
-  List fullMaster = [];
   var centralCommune = "";
   var centraleventId = "";
-  List<int> MonCoinPortbail = [50, 14, 22, 29, 61, 53, 76];
-  List<int> MonCoinLarris = [27, 77, 95, 60, 78, 92, 91, 93, 94, 76];
-  List<int> MonCoinLoon = [62, 59, 80, 60, 2];
-  List<int> MonCoin = [27, 77, 95, 60, 78, 92, 91, 93, 94, 76];
+  List<int> MonCoin = [
+    27,
+    77,
+    95,
+    60,
+    78,
+    92,
+    91,
+    93,
+    94,
+    76
+  ]; // défaut Larris, écrasé par storage
   int lieuActuel = 0;
 
   ConfigTrajet configTrajet = ConfigTrajet(8, 1, 2, []);
@@ -355,7 +368,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                           setState(() {
                             nowActif =
                                 nowActif.subtract(const Duration(days: 1));
-                                          dateSelected = DateService.dateToString(nowActif);
+                            dateSelected = DateService.dateToString(nowActif);
                           });
                           readBrocabrac();
                         },
@@ -383,10 +396,22 @@ class _ManagerPMLState extends State<ManagerPML> {
                           nbBrocabrac = 0;
                           setState(() {
                             nowActif = nowActif.add(const Duration(days: 1));
-                                          dateSelected = DateService.dateToString(nowActif);
+                            dateSelected = DateService.dateToString(nowActif);
                           });
                           readBrocabrac();
                         },
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(
+                          _gpsSimule ? Icons.location_pin : Icons.gps_fixed,
+                          color: _gpsSimule ? Colors.amber : Colors.greenAccent,
+                        ),
+                        iconSize: cobracIconSize,
+                        tooltip: _gpsSimule ? 'GPS simulé actif' : 'GPS réel',
+                        padding: const EdgeInsets.all(2),
+                        constraints: const BoxConstraints(),
+                        onPressed: _showGpsSimuleDialog,
                       ),
                     ],
                   ),
@@ -417,7 +442,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                           _brocanteDay = HolidayService.prevBrocanteDayInWeek(
                               _brocanteDay);
                           nowActif = _brocanteDay;
-                                      dateSelected = DateService.dateToString(nowActif);
+                          dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -438,7 +463,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                           _brocanteDay = HolidayService.nextBrocanteDayInWeek(
                               _brocanteDay);
                           nowActif = _brocanteDay;
-                                      dateSelected = DateService.dateToString(nowActif);
+                          dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -472,7 +497,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                         nbBrocabrac = 0;
                         setState(() {
                           nowActif = HolidayService.nextBrocanteDay(nowActif);
-                                      dateSelected = DateService.dateToString(nowActif);
+                          dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -492,7 +517,7 @@ class _ManagerPMLState extends State<ManagerPML> {
                         setState(() {
                           nowActif = HolidayService.prevBrocanteDay(
                               nowActif, DateTime.now());
-                                      dateSelected = DateService.dateToString(nowActif);
+                          dateSelected = DateService.dateToString(nowActif);
                         });
                         readBrocabrac();
                       },
@@ -532,58 +557,6 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
   }
 
-  void changerLieuStandard() {
-    setState(() {
-      lieuActuel = (lieuActuel + 1) % 4;
-
-      switch (lieuActuel) {
-        case 0:
-          MonCoin.clear();
-          MonCoin.addAll(MonCoinLarris);
-          latitudeSelect = latitudeLarris;
-          longitudeSelect = longitudeLarris;
-          latitudeRef = latitudeLarris;
-          longitudeRef = longitudeLarris;
-          break;
-        case 1:
-          MonCoin.clear();
-          MonCoin.addAll(MonCoinPortbail);
-          latitudeSelect = latitudePortbail;
-          longitudeSelect = longitudePortbail;
-          latitudeRef = latitudePortbail;
-          longitudeRef = longitudePortbail;
-          break;
-        case 2:
-          MonCoin.clear();
-          MonCoin.addAll(MonCoinLoon);
-          latitudeSelect = latitudeLoon;
-          longitudeSelect = longitudeLoon;
-          latitudeRef = latitudeLoon;
-          longitudeRef = longitudeLoon;
-          break;
-        case 3:
-          if (latitudeGPS != null && longitudeGPS != null) {
-            _appliquerLieuGPS();
-          } else {
-            _obtenirPositionGPS().then((_) {
-              if (latitudeGPS != null) {
-                _appliquerLieuGPS();
-              }
-            });
-          }
-          break;
-      }
-
-      _saveLieuActuel(lieuActuel);
-
-      if (lieuActuel != 3 ||
-          (latitudeGPS != null && departementsGPS.isNotEmpty)) {
-        nbStepAsync = 0;
-        readBrocabrac();
-      }
-    });
-  }
-
   void completeInfosPlus() {
     for (Brocabrac _brocky in brocanteBrocabrac) {
       final thatVille = _brocky.brocLocality;
@@ -593,12 +566,17 @@ class _ManagerPMLState extends State<ManagerPML> {
       if (commune != null) {
         _brocky.revenu = commune.revenu.toInt();
         final rev = _brocky.revenu;
-        _brocky.brocStarRevenu = rev >= 30000 ? "5"
-            : rev > 25000 ? "4"
-            : rev > 20000 ? "3"
-            : rev > 15000 ? "2"
-            : rev > 10000 ? "1"
-            : "0";
+        _brocky.brocStarRevenu = rev >= 30000
+            ? "5"
+            : rev > 25000
+                ? "4"
+                : rev > 20000
+                    ? "3"
+                    : rev > 15000
+                        ? "2"
+                        : rev > 10000
+                            ? "1"
+                            : "0";
       }
     }
 
@@ -682,34 +660,26 @@ class _ManagerPMLState extends State<ManagerPML> {
   }
 
   void computeNewDistanceFromSelect() {
-    for (Brocabrac _brocky in brocanteBrocabrac) {
-      final latitudeTo = _brocky.brocLatitude;
-      final longitudeTo = _brocky.brocLongitude;
+    for (final broc in brocanteBrocabrac) {
       final bricolo = GeoService.distanceInKmBetweenEarthCoordinates(
-          latitudeSelect, longitudeSelect, latitudeTo, longitudeTo);
-      final initialdist = (bricolo * pifoMetre).round();
-      _brocky.brocFromSelect = initialdist;
+          latitudeSelect,
+          longitudeSelect,
+          broc.brocLatitude,
+          broc.brocLongitude);
+      broc.brocFromSelect = (bricolo * pifoMetre).round();
     }
 
-    brocanteBrocabracBis = List.from(brocanteBrocabrac);
-    brocanteBrocabracBis
-        .sort((a, b) => a.brocFromSelect.compareTo(b.brocFromSelect));
+    brocanteBrocabracBis = List.from(brocanteBrocabrac)
+      ..sort((a, b) => a.brocFromSelect.compareTo(b.brocFromSelect))
+      ..retainWhere((b) => b.brocEventStatus == 'OK');
+
+    for (int i = 0; i < brocanteBrocabracBis.length; i++) {
+      brocanteBrocabracBis[i].brocMaster = i + 1;
+    }
 
     setState(() {
-      nbBrocOK = brocanteBrocabracBis
-          .where((brocabrac) => brocabrac.brocEventStatus == 'OK')
-          .length;
-      brocanteBrocabracBis
-          .retainWhere((brocabrac) => brocabrac.brocEventStatus == 'OK');
+      nbBrocOK = brocanteBrocabracBis.length;
     });
-
-    nbBrocOK = 0;
-    for (var brocabrac in brocanteBrocabracBis) {
-      setState(() {
-        nbBrocOK++;
-      });
-      brocabrac.brocMaster = nbBrocOK;
-    }
   }
 
   void copyInfos() {
@@ -778,29 +748,27 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
   }
 
-  Future<String> getInfoBrocabrac(Uri bigUrl) async {
-    NetworkHelper networkHelper = NetworkHelper();
-    await networkHelper.getDataBrocabrac(bigUrl, fullMaster);
-
-    for (Brocabrac _brocky in fullMaster) {
+  Future<void> _fetchDepartement(Uri bigUrl) async {
+    final localMaster = <Brocabrac>[];
+    await NetworkHelper().getDataBrocabrac(bigUrl, localMaster);
+    for (final broc in localMaster) {
       nbBrocabrac++;
-      _brocky.setbrocMaster(nbBrocabrac);
-      brocanteBrocabrac.add(_brocky);
+      broc.setbrocMaster(nbBrocabrac);
+      brocanteBrocabrac.add(broc);
     }
-
-    computeNewDistance();
-    computeDense(rayonDensite);
-    calculerToutesLesNotes();
-
-    fullMaster.clear();
-
     setState(() {
       nbStepAsync++;
     });
+  }
 
-    if (nbStepAsync == maxStepAsync + 1) nbStepAsync = 0;
-
-    return ("OK");
+  void _finaliserChargement() {
+    computeNewDistance();
+    computeDense(rayonDensite);
+    calculerToutesLesNotes();
+    updateNbBrocOK();
+    setState(() {
+      nbStepAsync = 0;
+    });
   }
 
   String getLieuActuelNom() {
@@ -951,6 +919,7 @@ class _ManagerPMLState extends State<ManagerPML> {
     Future.wait([
       _loadLieuActuel(),
       _loadAllParametres(),
+      _loadGpsSimule(),
       _loadMonCoin(),
     ]).then((_) {
       // ========== INITIALISER LE SERVICE DE SCORING APRÈS CHARGEMENT DES PARAMÈTRES ==========
@@ -964,18 +933,6 @@ class _ManagerPMLState extends State<ManagerPML> {
       );
       // ========================================================================================
 
-      // GPS au démarrage : coordonnées seulement, sans écraser MonCoin
-      _obtenirPositionGPS().then((_) {
-        if (latitudeGPS != null && longitudeGPS != null) {
-          setState(() {
-            latitudeSelect = latitudeGPS!;
-            longitudeSelect = longitudeGPS!;
-            latitudeRef = latitudeGPS!;
-            longitudeRef = longitudeGPS!;
-          });
-        }
-      });
-
       dateSelected = DateService.getDateNextDimanche();
       dimancheInitial = dateSelected;
       DateTime nowTemp = DateTime.now();
@@ -984,11 +941,32 @@ class _ManagerPMLState extends State<ManagerPML> {
       _brocanteDay = nowActif;
       centralCommune = versionNum;
 
-      if (lieuActuel == 0) {
-        latitudeRef = latitudeLarris;
-        longitudeRef = longitudeLarris;
-        latitudeSelect = latitudeRef;
-        longitudeSelect = longitudeRef;
+      if (_gpsSimule) {
+        // Restaurer le point de référence simulé sauvegardé
+        setState(() {
+          latitudeRef = _latSimulee;
+          longitudeRef = _lonSimulee;
+          latitudeSelect = _latSimulee;
+          longitudeSelect = _lonSimulee;
+        });
+      } else {
+        if (lieuActuel == 0) {
+          latitudeRef = latitudeLarris;
+          longitudeRef = longitudeLarris;
+          latitudeSelect = latitudeRef;
+          longitudeSelect = longitudeRef;
+        }
+        // GPS réel en arrière-plan, sans bloquer le premier chargement
+        _obtenirPositionGPS().then((_) {
+          if (latitudeGPS != null && longitudeGPS != null) {
+            setState(() {
+              latitudeSelect = latitudeGPS!;
+              longitudeSelect = longitudeGPS!;
+              latitudeRef = latitudeGPS!;
+              longitudeRef = longitudeGPS!;
+            });
+          }
+        });
       }
 
       nbBrocabrac = 0;
@@ -1029,15 +1007,13 @@ class _ManagerPMLState extends State<ManagerPML> {
 
     nbStepAsync = 1;
 
-    for (int dipart in MonCoin) {
-      String quelCoin = dipart.toString();
-      String paramHttps = debutHttps + quelCoin + finHttps + dateSelected;
-      Uri myUrl = Uri.parse(paramHttps);
+    final futures = MonCoin.map((dipart) {
+      final paramHttps =
+          debutHttps + dipart.toString() + finHttps + dateSelected;
+      return _fetchDepartement(Uri.parse(paramHttps));
+    }).toList();
 
-      getInfoBrocabrac(myUrl).then((_) {
-        updateNbBrocOK();
-      });
-    }
+    Future.wait(futures).then((_) => _finaliserChargement());
   }
 
   void updateNbBrocOK() {
@@ -1051,34 +1027,29 @@ class _ManagerPMLState extends State<ManagerPML> {
   void _appliquerLieuSansLecture() {
     switch (lieuActuel) {
       case 0:
-        MonCoin.clear();
-        MonCoin.addAll(MonCoinLarris);
         latitudeSelect = latitudeLarris;
         longitudeSelect = longitudeLarris;
         latitudeRef = latitudeLarris;
         longitudeRef = longitudeLarris;
         break;
       case 1:
-        MonCoin.clear();
-        MonCoin.addAll(MonCoinPortbail);
         latitudeSelect = latitudePortbail;
         longitudeSelect = longitudePortbail;
         latitudeRef = latitudePortbail;
         longitudeRef = longitudePortbail;
         break;
       case 2:
-        MonCoin.clear();
-        MonCoin.addAll(MonCoinLoon);
         latitudeSelect = latitudeLoon;
         longitudeSelect = longitudeLoon;
         latitudeRef = latitudeLoon;
         longitudeRef = longitudeLoon;
         break;
       case 3:
-        if (latitudeGPS != null &&
-            longitudeGPS != null &&
-            departementsGPS.isNotEmpty) {
-          _appliquerLieuGPS();
+        if (latitudeGPS != null && longitudeGPS != null) {
+          latitudeRef = latitudeGPS!;
+          longitudeRef = longitudeGPS!;
+          latitudeSelect = latitudeGPS!;
+          longitudeSelect = longitudeGPS!;
         }
         break;
     }
@@ -1135,6 +1106,365 @@ class _ManagerPMLState extends State<ManagerPML> {
     }
   }
 
+  // ========== GPS SIMULÉ ==========
+
+  Future<void> _loadGpsSimule() async {
+    final data = await StorageService.loadGpsSimule();
+    setState(() {
+      _gpsSimule = data.actif;
+      _latSimulee = data.lat;
+      _lonSimulee = data.lon;
+    });
+  }
+
+  Future<void> _appliquerGpsSimule() async {
+    // Changer uniquement le point de référence — MonCoin reste inchangé
+    setState(() {
+      latitudeRef = _latSimulee;
+      longitudeRef = _lonSimulee;
+      latitudeSelect = _latSimulee;
+      longitudeSelect = _lonSimulee;
+    });
+
+    nbStepAsync = 0;
+    readBrocabrac();
+  }
+
+  List<({VilleFrance ville, int distKm})> _cinqVillesProches(
+      double lat, double lon) {
+    final withDist = listVillesFrance
+        .map((v) => (
+              ville: v,
+              distKm: GeoService.distanceInKmBetweenEarthCoordinates(
+                      lat, lon, v.latitude, v.longitude)
+                  .round(),
+            ))
+        .toList()
+      ..sort((a, b) => a.distKm.compareTo(b.distKm));
+    return withDist.take(5).toList();
+  }
+
+  void _showGpsSimuleDialog() {
+    double tempLat = _latSimulee;
+    double tempLon = _lonSimulee;
+    bool tempActif = _gpsSimule;
+    List<({VilleFrance ville, int distKm})> villesProches =
+        tempActif ? _cinqVillesProches(tempLat, tempLon) : [];
+
+    const double padW = 240;
+    const double padH = 160;
+    const double latMin = 42.3, latMax = 51.1;
+    const double lonMin = -4.8, lonMax = 8.2;
+    const double dotR = 8;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDlg) {
+          double latToPy(double lat) =>
+              (latMax - lat) / (latMax - latMin) * padH;
+          double lonToPx(double lon) =>
+              (lon - lonMin) / (lonMax - lonMin) * padW;
+          double pyToLat(double py) =>
+              (latMax - py / padH * (latMax - latMin)).clamp(latMin, latMax);
+          double pxToLon(double px) =>
+              (lonMin + px / padW * (lonMax - lonMin)).clamp(lonMin, lonMax);
+
+          return AlertDialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+            titlePadding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('GPS réel', style: TextStyle(fontSize: 13)),
+                Switch(
+                  value: tempActif,
+                  onChanged: (v) => setDlg(() {
+                    tempActif = v;
+                    if (v)
+                      villesProches = _cinqVillesProches(tempLat, tempLon);
+                  }),
+                ),
+                const Text('GPS simulé', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (tempActif) ...[
+                      const SizedBox(height: 8),
+                      // 2D drag pad
+                      Center(
+                        child: GestureDetector(
+                          onTapDown: (d) {
+                            final dx =
+                                d.localPosition.dx.clamp(0.0, padW);
+                            final dy =
+                                d.localPosition.dy.clamp(0.0, padH);
+                            setDlg(() {
+                              tempLat = pyToLat(dy);
+                              tempLon = pxToLon(dx);
+                              villesProches =
+                                  _cinqVillesProches(tempLat, tempLon);
+                            });
+                          },
+                          onPanUpdate: (d) {
+                            setDlg(() {
+                              final newPy =
+                                  (latToPy(tempLat) + d.delta.dy)
+                                      .clamp(0.0, padH);
+                              final newPx =
+                                  (lonToPx(tempLon) + d.delta.dx)
+                                      .clamp(0.0, padW);
+                              tempLat = pyToLat(newPy);
+                              tempLon = pxToLon(newPx);
+                              villesProches =
+                                  _cinqVillesProches(tempLat, tempLon);
+                            });
+                          },
+                          child: Container(
+                            width: padW,
+                            height: padH,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Colors.blueGrey.shade400),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: Stack(
+                                children: [
+                                  const Positioned.fill(
+                                    child: CustomPaint(
+                                        painter: _FrancePainter()),
+                                  ),
+                                const Positioned(
+                                  top: 2,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Text('N',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.blueGrey,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const Positioned(
+                                  bottom: 2,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Text('S',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.blueGrey,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const Positioned(
+                                  left: 3,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: Text('O',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.blueGrey,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const Positioned(
+                                  right: 3,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: Text('E',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.blueGrey,
+                                            fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: lonToPx(tempLon) - dotR,
+                                  top: latToPy(tempLat) - dotR,
+                                  child: Container(
+                                    width: dotR * 2,
+                                    height: dotR * 2,
+                                    decoration: BoxDecoration(
+                                      color: Colors.deepOrange,
+                                      shape: BoxShape.circle,
+                                      boxShadow: const [
+                                        BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 3)
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Lat: ${tempLat.toStringAsFixed(2)}°N   Lon: ${tempLon.toStringAsFixed(2)}°',
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      // ± fine-tuning buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Row(children: [
+                            const Text('N/S',
+                                style: TextStyle(fontSize: 11)),
+                            const SizedBox(width: 2),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.remove_circle_outline),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setDlg(() {
+                                tempLat =
+                                    (tempLat + 0.1).clamp(latMin, latMax);
+                                villesProches =
+                                    _cinqVillesProches(tempLat, tempLon);
+                              }),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setDlg(() {
+                                tempLat =
+                                    (tempLat - 0.1).clamp(latMin, latMax);
+                                villesProches =
+                                    _cinqVillesProches(tempLat, tempLon);
+                              }),
+                            ),
+                          ]),
+                          Row(children: [
+                            const Text('O/E',
+                                style: TextStyle(fontSize: 11)),
+                            const SizedBox(width: 2),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.remove_circle_outline),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setDlg(() {
+                                tempLon =
+                                    (tempLon - 0.1).clamp(lonMin, lonMax);
+                                villesProches =
+                                    _cinqVillesProches(tempLat, tempLon);
+                              }),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              iconSize: 20,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setDlg(() {
+                                tempLon =
+                                    (tempLon + 0.1).clamp(lonMin, lonMax);
+                                villesProches =
+                                    _cinqVillesProches(tempLat, tempLon);
+                              }),
+                            ),
+                          ]),
+                        ],
+                      ),
+                      if (villesProches.isNotEmpty) ...[
+                        const Divider(height: 8),
+                        SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: villesProches.map((v) => InkWell(
+                              onTap: () => setDlg(() {
+                                tempLat = v.ville.latitude;
+                                tempLon = v.ville.longitude;
+                                villesProches =
+                                    _cinqVillesProches(tempLat, tempLon);
+                              }),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 5),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.location_on,
+                                        size: 14, color: Colors.blue),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '${v.ville.nom} (${v.ville.departement})',
+                                        style:
+                                            const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                    Text('${v.distKm} km',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+            actions: [
+              TextButton(
+                child: const Text('Annuler'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              ElevatedButton(
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                child: const Text('Appliquer',
+                    style: TextStyle(color: Colors.white)),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _gpsSimule = tempActif;
+                    _latSimulee = tempLat;
+                    _lonSimulee = tempLon;
+                  });
+                  await StorageService.saveGpsSimule(
+                      tempActif, tempLat, tempLon);
+                  if (tempActif) {
+                    _appliquerGpsSimule();
+                  } else {
+                    _appliquerLieuSansLecture();
+                    nbStepAsync = 0;
+                    readBrocabrac();
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // =================================
+
   // ========== DIALOG SIMPLIFIÉ UTILISANT RayonDialog ==========
   void _showRayonDialog() {
     final parametresActuels = AppParameters(
@@ -1189,4 +1519,106 @@ class _ManagerPMLState extends State<ManagerPML> {
     );
   }
 // =============================================================
+}
+
+class _FrancePainter extends CustomPainter {
+  const _FrancePainter();
+
+  static const _latMin = 42.3, _latMax = 51.1;
+  static const _lonMin = -4.8, _lonMax = 8.2;
+
+  // Contour simplifié de la France métropolitaine (sans Corse), sens horaire
+  // chaque point = [longitude, latitude]
+  static const _border = <List<double>>[
+    [-4.79, 48.41], // Pointe de Corsen
+    [-4.73, 48.02], // Pointe du Raz
+    [-4.09, 47.87], // Bénodet
+    [-3.37, 47.75], // Lorient
+    [-3.10, 47.47], // Quiberon
+    [-2.52, 47.30], // Le Croisic
+    [-2.20, 47.27], // St-Nazaire
+    [-2.04, 47.03], // Bourgneuf
+    [-1.78, 46.50], // Les Sables-d'Olonne
+    [-1.15, 46.16], // La Rochelle
+    [-1.06, 45.57], // Royan
+    [-1.17, 44.66], // Arcachon
+    [-1.56, 43.49], // Bayonne
+    [-1.77, 43.37], // Hendaye
+    [-0.92, 43.30], // Pyrénées ouest
+    [ 0.32, 42.79], // Pyrénées centre
+    [ 1.73, 42.47], // Pyrénées est
+    [ 2.97, 42.51], // Perpignan
+    [ 3.06, 42.92], // Leucate
+    [ 3.70, 43.40], // Sète
+    [ 4.19, 43.57], // Camargue
+    [ 5.33, 43.22], // Marseille
+    [ 5.93, 43.11], // Toulon
+    [ 6.64, 43.27], // St-Tropez
+    [ 7.26, 43.70], // Nice
+    [ 7.52, 43.76], // Menton
+    [ 7.00, 44.90], // Alpes intérieures
+    [ 6.50, 46.00], // frontière suisse
+    [ 6.09, 46.38], // Lac Léman
+    [ 7.59, 47.49], // Bâle
+    [ 7.68, 47.75], // Mulhouse
+    [ 7.75, 48.58], // Strasbourg
+    [ 7.94, 49.04], // Wissembourg
+    [ 6.17, 49.46], // Luxembourg
+    [ 5.82, 49.54], // Longwy
+    [ 4.87, 49.54], // frontière belge
+    [ 4.19, 50.25], // Maubeuge
+    [ 3.37, 50.51], // Valenciennes
+    [ 2.55, 50.81], // frontière belge NW
+    [ 2.37, 51.04], // Dunkerque
+    [ 1.85, 50.98], // Calais
+    [ 1.60, 50.73], // Boulogne
+    [ 1.08, 49.93], // Dieppe
+    [ 0.11, 49.49], // Le Havre
+    [-0.36, 49.18], // Caen
+    [-0.90, 49.35], // base Cotentin est
+    [-1.26, 49.67], // Barfleur
+    [-1.62, 49.64], // Cherbourg
+    [-1.93, 49.72], // Cap de la Hague
+    [-1.78, 49.38], // Barneville
+    [-1.60, 48.84], // Granville
+    [-1.51, 48.63], // Mont-Saint-Michel
+    [-2.02, 48.65], // St-Malo
+    [-2.32, 48.68], // Cap Fréhel
+    [-2.74, 48.54], // St-Brieuc
+    [-3.83, 48.58], // Morlaix
+    [-4.49, 48.39], // Brest
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    double px(double lon) => (lon - _lonMin) / (_lonMax - _lonMin) * size.width;
+    double py(double lat) => (_latMax - lat) / (_latMax - _latMin) * size.height;
+
+    // Mer
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFFB3D9F2),
+    );
+
+    // Territoire
+    final path = Path();
+    for (int i = 0; i < _border.length; i++) {
+      final x = px(_border[i][0]);
+      final y = py(_border[i][1]);
+      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+    }
+    path.close();
+
+    canvas.drawPath(path, Paint()..color = const Color(0xFFF0EAD6));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF78909C)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

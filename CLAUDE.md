@@ -84,14 +84,32 @@ flutter pub upgrade
 - `communestchinos.dart` — `listCommunes`: a large list of French communes with revenue/population data. Used to enrich brocantes with income data for scoring.
 - `historibroc.dart` — `listHistoric`: hardcoded visit history.
 - `diverspml.dart` — French day/month name arrays and `BreakDate` utility.
+- `villes_france.dart` — `listVillesFrance`: 9 911 communes métropolitaines ≥ 1 000 hab. avec coordonnées GPS et département. Utilisée uniquement par le GPS simulé pour afficher les 5 villes les plus proches des coordonnées choisies.
 
 ### Location presets
 
 `ManagerPML` has three hardcoded base locations (Larris, Portbail, Loon-Plage) plus a GPS mode. The active location determines which département codes are fetched and which coordinates are used as the distance reference.
 
+### GPS simulé
+
+Accessible via l'icône GPS dans la barre de dates. Permet de simuler une position arbitraire sans bouger physiquement. Persisté via `StorageService.saveGpsSimule / loadGpsSimule` (SharedPreferences).
+
+- L'activation ne change **pas** les départements sélectionnés (MonCoin) — seules les coordonnées de référence (`latitudeRef`, `longitudeRef`, `latitudeSelect`, `longitudeSelect`) sont mises à jour.
+- Le dialog contient un **pad 2D draggable** (`GestureDetector` + `CustomPaint`) représentant la silhouette de la France métropolitaine (57 points, classe `_FrancePainter`). L'utilisateur glisse un point orange sur la carte.
+- Boutons ± N/S et O/E pour ajustement fin (±0.1°). Convention : N/S `−` = nord, `+` = sud ; O/E `−` = ouest, `+` = est.
+- Les 5 villes les plus proches (depuis `listVillesFrance`) se mettent à jour en temps réel pendant le glissement (`onPanUpdate`) via `_cinqVillesProches()`.
+- Un tap sur une ville centre le point sur elle.
+- Bornes du pad : lat 42.3–51.1°N, lon −4.8–8.2°E.
+
 ### Scoring
 
 `ScoringService.calculerScoreOptimal()` combines four weighted criteria (exposants, local density, commune revenue, historic visits) with an optional distance factor. Weights are persisted via `SharedPreferences` and configurable from the settings dialog. The top 3 ranked events are highlighted with gold/silver/bronze colors in the list.
+
+### Liste brocantes (BrocanteListView)
+
+- Brocantes annulées (`brocEventStatus != 'OK'`) affichées en rouge écarlate (`#D50000`) avec préfixe `KO` sur toutes les lignes.
+- Classement : médailles 🥇🥈🥉 uniquement pour le top 3, pas de texte de rang.
+- Chargement optimisé : `Future.wait()` pour fetch parallèle, 1 seul `setState` final, calcul densité/scoring O(N²) une seule fois après tous les fetches.
 
 ### Historic analysis (`zee.dart`)
 

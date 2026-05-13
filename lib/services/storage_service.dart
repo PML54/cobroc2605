@@ -63,6 +63,9 @@ class StorageService {
   static const String _inclureDistanceKey = 'inclure_distance_cobrac';
   static const String _lieuActuelKey = 'lieu_actuel_cobrac';
   static const String _monCoinKey = 'mon_coin_cobrac';
+  static const String _gpsSimuleKey = 'gps_simule_cobrac';
+  static const String _latSimuleeKey = 'lat_simulee_cobrac';
+  static const String _lonSimuleeKey = 'lon_simulee_cobrac';
 
   static Future<AppParameters> loadParameters() async {
     final prefs = await SharedPreferences.getInstance();
@@ -106,5 +109,21 @@ class StorageService {
   static Future<void> saveMonCoin(List<int> deps) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_monCoinKey, deps.join(','));
+  }
+
+  static Future<({bool actif, double lat, double lon})> loadGpsSimule() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (
+      actif: prefs.getBool(_gpsSimuleKey) ?? false,
+      lat: prefs.getDouble(_latSimuleeKey) ?? 46.5,
+      lon: prefs.getDouble(_lonSimuleeKey) ?? 2.5,
+    );
+  }
+
+  static Future<void> saveGpsSimule(bool actif, double lat, double lon) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_gpsSimuleKey, actif);
+    await prefs.setDouble(_latSimuleeKey, lat);
+    await prefs.setDouble(_lonSimuleeKey, lon);
   }
 }
