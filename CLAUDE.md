@@ -1,3 +1,74 @@
+<!-- ════════════════════════════════════════════════════════════════
+     BLOC CONVENTIONS — à placer EN TÊTE du CLAUDE.md généré par /init.
+     Le descriptif d'architecture /init reste tel quel en dessous.
+     ════════════════════════════════════════════════════════════════ -->
+
+# Conventions projet — cobroc
+
+> Nom officiel du projet : **cobroc** (orthographe unique, ne pas écrire
+> « cobrac » ni « Cobrac » dans le code, les commentaires ou les messages).
+
+## Convention OBLIGATOIRE — en-tête de fichier
+
+**Tout fichier créé ou modifié DOIT commencer par cet en-tête**, mis à jour à
+chaque intervention :
+
+```dart
+// lib/[CHEMIN]/fichier.dart
+// Modified: YYMMDDHHMMM
+// [TITRE]
+// CHANGEMENTS: (1) [Quoi] ligne X, (2) [Quoi] ligne Y, (3) [Quoi] ligne Z
+```
+
+Règles : chemin réel du fichier ; horodatage à la minute ; titre court ; liste
+numérotée des changements de l'intervention en cours, avec les lignes concernées.
+Ne JAMAIS omettre cet en-tête, y compris sur les fichiers existants modifiés.
+
+## Gestion d'état (état réel du code)
+
+- L'app utilise actuellement **`setState`** + **`SharedPreferences`**
+  (`StorageService`) pour la persistance. PAS de Riverpod en place.
+- **Ne pas migrer vers Riverpod** ni introduire une autre lib d'état de ta propre
+  initiative. Si une migration Riverpod est souhaitée, elle sera demandée
+  EXPLICITEMENT et traitée comme un chantier à part, fichier par fichier.
+
+## Conventions de code
+
+- **Imports absolus** (package imports), pas de chemins relatifs.
+- **Architecture propre** privilégiée sur la rustine rapide ; respecter la
+  séparation existante services / widgets / models / screens.
+- Précision et **vérification pas à pas**, pas d'automatisation hâtive.
+- Commentaires en français ; **termes techniques IA/ML en anglais** non traduits
+  (tool-calling, prompt, token, embedding, inference, structured output, RAG…).
+- Style Dart : passer `dart format` ; viser `flutter analyze` **sans warning**
+  avant de présenter un diff.
+
+## Contraintes — IMPORTANT
+
+- **Légal / Brocabrac (BLOQUANT publication).** cobroc scrape brocabrac.fr
+  (`NetworkHelper`, extraction ld+json). La publication est SUSPENDUE tant que les
+  questions de droits sur les données ne sont pas tranchées (droit *sui generis*
+  sur les bases de données, CGU du site). En conséquence :
+    - Ne PAS rendre le scraping plus agressif (fréquence, parallélisme au-delà de
+      l'existant, contournement de protections, ignorance du robots.txt).
+    - Ne PAS pousser vers une mise en production / publication.
+    - SIGNALER tout changement qui aggraverait l'exposition juridique.
+- **Secrets** : aucune clé/identifiant en clair dans le dépôt.
+- **Données statiques compilées** (`listHistoric`, `listCommunes`,
+  `listVillesFrance`) : grosses listes intégrées au binaire — éviter de les
+  reformater ou réordonner massivement sans raison (diffs énormes, revue impossible).
+
+## Périmètre des interventions
+
+- Faire : diffs ciblés, raisonnement explicite, respect de l'en-tête, vérif
+  `flutter analyze`.
+- Ne pas faire : refactor massif non demandé, changement de lib d'état,
+  modification du comportement de scraping Brocabrac sans validation, publication.
+
+<!-- ════════════════════════════════════════════════════════════════
+     FIN DU BLOC CONVENTIONS. Le contenu /init original suit ci-dessous.
+     ════════════════════════════════════════════════════════════════ -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -129,3 +200,4 @@ Accessible via l'icône GPS dans la barre de dates. Permet de simuler une positi
 | `diacritic` | Accent-insensitive string comparison |
 | `intl` | Date formatting |
 | `sqlite3` | Declared dependency (not actively used in current screens) |
+quitexit

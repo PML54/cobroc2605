@@ -111,7 +111,6 @@ class _ManagerPMLState extends State<ManagerPML> {
   DateTime now = DateTime.now();
   int rayonDensite = 12;
   Map<String, int> classementOptimal = {};
-
   Color colorTop1 = Colors.amber.shade700;
   Color colorTop2 = Colors.grey.shade400;
   Color colorTop3 = const Color(0xFFCD7F32);
