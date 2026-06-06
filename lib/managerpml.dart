@@ -1,3 +1,7 @@
+// lib/managerpml.dart
+// Modified: 260606160000
+// Manager principal — liste des brocantes
+// CHANGEMENTS: (1) isInHistoric: match partiel préfixe pour villes avec suffixe géographique (ex: ERAGNY → ERAGNYSUROISE), ligne 976
 import 'dart:async';
 
 import 'package:cobroc/communestchinos.dart';
@@ -974,7 +978,13 @@ class _ManagerPMLState extends State<ManagerPML> {
   }
 
   bool isInHistoric(String thatVille) {
-    return _historicIndex.contains(normalizeString(thatVille));
+    final normalized = normalizeString(thatVille);
+    if (_historicIndex.contains(normalized)) return true;
+    // Match partiel : "ERAGNY" doit matcher "ERAGNYSUROISE" et vice-versa
+    if (normalized.length < 4) return false;
+    return _historicIndex.any(
+      (h) => h.length >= 4 && (h.startsWith(normalized) || normalized.startsWith(h)),
+    );
   }
 
   String normalizeString(String str) {

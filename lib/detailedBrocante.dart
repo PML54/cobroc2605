@@ -1,3 +1,7 @@
+// lib/detailedBrocante.dart
+// Modified: 260606161500
+// Détail brocante — analyse historique
+// CHANGEMENTS: (1) analyzeBrocante: remplace toUpperCase par Historic.matchesVille pour match partiel, ligne 259
 import 'package:cobroc/historibroc.dart' show Historic, listHistoric;
 import 'package:cobroc/pmltools.dart';
 import 'package:flutter/material.dart';
@@ -256,7 +260,7 @@ class _DetailBrocState extends State<DetailBroc> {
     return true;
   }
   Map<String, dynamic> analyzeBrocante(String ville) {
-    var cityEntries = listHistoric.where((h) => h.histVille.toUpperCase() == ville.toUpperCase()).toList();
+    var cityEntries = listHistoric.where((h) => Historic.matchesVille(h.histVille, ville)).toList();
 
     if (cityEntries.isEmpty) {
       return {'error': 'Aucune donnée historique trouvée pour cette ville'};

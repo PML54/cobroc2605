@@ -1,3 +1,7 @@
+// lib/histeric.dart
+// Modified: 260606161500
+// Histeric — navigation dans l'historique par commune
+// CHANGEMENTS: (1) loadHistorics: remplace normalizeString == par Historic.matchesVille pour match partiel, ligne 51
 import 'package:cobroc/historibroc.dart';
 import 'package:diacritic/diacritic.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +52,7 @@ class _HistericState extends State<Histeric> {
 
   void loadHistorics(String commune) {
     myHistoric = listHistoric
-        .where((historic) => normalizeString(historic.histVille) == normalizeString(commune))
+        .where((historic) => Historic.matchesVille(historic.histVille, commune))
         .toList();
     myHistoric.sort((a, b) => b.histCheckDate.compareTo(a.histCheckDate));
     if (myHistoric.isNotEmpty) {
