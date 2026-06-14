@@ -90,6 +90,7 @@ class LieuOut(BaseModel):
     adresse:     str
     recurrence:  str
     created_at:  str
+    nb_visites:  int = 0
 
 
 class HistoricIn(BaseModel):
@@ -284,25 +285,34 @@ def delete_historic(entry_id: int):
 def list_lieux(
     ville:  str | None = Query(None),
     cp:     int | None = Query(None),
-    sort:   str        = Query("ville_asc", pattern="^(ville_asc|ville_desc)$"),
+    sort:   str        = Query("ville_asc", pattern="^(ville_asc|ville_desc|visites_desc)$"),
     limit:  int        = Query(500, le=1000),
     offset: int        = Query(0),
 ):
     clauses, params = [], []
     if ville:
-        clauses.append("NOACCENT(ville) LIKE NOACCENT(?)")
+        clauses.append("NOACCENT(l.ville) LIKE NOACCENT(?)")
         params.append(f"%{ville}%")
     if cp is not None:
-        clauses.append("code_postal = ?")
+        clauses.append("l.code_postal = ?")
         params.append(cp)
 
     order = {
-        "ville_asc":  "ville_normalized ASC",
-        "ville_desc": "ville_normalized DESC",
+        "ville_asc":    "l.ville_normalized ASC",
+        "ville_desc":   "l.ville_normalized DESC",
+        "visites_desc": "nb_visites DESC",
     }[sort]
 
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-    sql = f"SELECT * FROM lieux {where} ORDER BY {order} LIMIT ? OFFSET ?"
+    sql = f"""
+        SELECT l.*, COUNT(h.id) AS nb_visites
+        FROM lieux l
+        LEFT JOIN historic h ON h.lieu_id = l.id
+        {where}
+        GROUP BY l.id
+        ORDER BY {order}
+        LIMIT ? OFFSET ?
+    """
     params += [limit, offset]
 
     with _db() as con:

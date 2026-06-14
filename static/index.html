@@ -398,7 +398,7 @@
 // ── State ──────────────────────────────────────────────────────────────────
 let selectedName = null;   // 'PML' | 'FRA'
 let selectedGood = 0;
-let selectedVille = null;  // { hist_ville, hist_code_postal, hist_adresse } or null
+let selectedLieuId = null; // id du lieu sélectionné dans le dropdown, null si nouveau
 let debounceTimer = null;
 let dropFocused = -1;
 let dropItems = [];
@@ -447,7 +447,7 @@ const villeInput = document.getElementById('ville-input');
 const dropdown   = document.getElementById('dropdown');
 
 villeInput.addEventListener('input', () => {
-  selectedVille = null;
+  selectedLieuId = null;
   clearTimeout(debounceTimer);
   const q = villeInput.value.trim();
   if (q.length < 2) { closeDropdown(); return; }
@@ -482,19 +482,19 @@ function renderDropdown(items, q) {
   items.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'dropdown-item';
+    const label = item.nom ? `${item.nom} — ${item.ville}` : item.ville;
     div.innerHTML = `
-      <span>${highlight(item.hist_ville, q)}</span>
-      <span class="cp">${item.hist_code_postal || ''}</span>
+      <span>${highlight(label, q)}</span>
+      <span class="cp">${item.code_postal || ''}</span>
       <span class="visits">${item.nb_visites} visite${item.nb_visites > 1 ? 's' : ''}</span>
     `;
     div.addEventListener('click', () => selectDropItem(i));
     dropdown.appendChild(div);
   });
 
-  // Option "Nouvelle ville"
   const newRow = document.createElement('div');
   newRow.className = 'new-city-row';
-  newRow.innerHTML = `<span>＋</span> Nouvelle ville « <strong>${q.toUpperCase()}</strong> »`;
+  newRow.innerHTML = `<span>＋</span> Nouveau lieu « <strong>${q.toUpperCase()}</strong> »`;
   newRow.addEventListener('click', () => pickNewCity(q));
   dropdown.appendChild(newRow);
 
@@ -510,15 +510,15 @@ function highlight(text, q) {
 function selectDropItem(i) {
   const item = dropItems[i];
   if (!item) return;
-  selectedVille = item;
-  villeInput.value = item.hist_ville;
-  if (item.hist_code_postal) document.getElementById('hist_code_postal').value = item.hist_code_postal;
-  if (item.hist_adresse) document.getElementById('hist_adresse').value = item.hist_adresse;
+  selectedLieuId = item.id;
+  villeInput.value = item.ville;
+  if (item.code_postal) document.getElementById('hist_code_postal').value = item.code_postal;
+  if (item.adresse) document.getElementById('hist_adresse').value = item.adresse;
   closeDropdown();
 }
 
 function pickNewCity(q) {
-  selectedVille = null;
+  selectedLieuId = null;
   villeInput.value = q.toUpperCase();
   closeDropdown();
   document.getElementById('hist_code_postal').focus();
@@ -545,19 +545,41 @@ document.getElementById('mainForm').addEventListener('submit', async e => {
   btn.disabled = true;
   btn.textContent = 'Enregistrement…';
 
+  const ville       = villeInput.value.trim().toUpperCase();
+  const code_postal = parseInt(document.getElementById('hist_code_postal').value) || 0;
+  const adresse     = document.getElementById('hist_adresse').value.trim();
+
+  // Créer le lieu s'il est nouveau
+  let lieu_id = selectedLieuId;
+  if (!lieu_id) {
+    try {
+      const lieuRes = await fetch('/lieux', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: '', ville, code_postal, adresse, recurrence: '' }),
+      });
+      if (lieuRes.ok) {
+        const lieu = await lieuRes.json();
+        lieu_id = lieu.id;
+        selectedLieuId = lieu_id;
+      }
+    } catch { /* lieu non créé, on continue sans */ }
+  }
+
   const body = {
     hist_name:        selectedName,
     hist_date:        document.getElementById('hist_date').value,
     hist_good:        selectedGood,
-    hist_ville:       villeInput.value.trim().toUpperCase(),
-    hist_code_postal: parseInt(document.getElementById('hist_code_postal').value) || 0,
-    hist_adresse:     document.getElementById('hist_adresse').value.trim(),
+    hist_ville:       ville,
+    hist_code_postal: code_postal,
+    hist_adresse:     adresse,
     hist_nb_expo:     parseInt(document.getElementById('hist_nb_expo').value) || 0,
     hist_pml_dep:     parseInt(document.getElementById('hist_pml_dep').value) || 0,
     hist_fra_dep:     parseInt(document.getElementById('hist_fra_dep').value) || 0,
     hist_maison_dep:  parseInt(document.getElementById('hist_maison_dep').value) || 0,
     hist_avis:        document.getElementById('hist_avis').value.trim(),
     hist_detail:      document.getElementById('hist_detail').value.trim(),
+    lieu_id,
   };
 
   try {
@@ -626,7 +648,7 @@ function showFeedback(type, html) {
 function resetForm() {
   selectedName = null;
   selectedGood = 0;
-  selectedVille = null;
+  selectedLieuId = null;
   document.getElementById('btn-pml').classList.remove('active');
   document.getElementById('btn-fra').classList.remove('active');
   renderStars();
