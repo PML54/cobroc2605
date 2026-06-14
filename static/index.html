@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cobroc — Nouvelle visite</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f3ee;
+    --card: #ffffff;
+    --primary: #b5651d;
+    --primary-dark: #8b4513;
+    --text: #2d2520;
+    --muted: #888;
+    --border: #d9d0c4;
+    --focus: #b5651d;
+    --danger: #c0392b;
+    --success: #27ae60;
+    --radius: 10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Visiteur toggle */
+  .toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .toggle-btn {
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+
+  .toggle-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+  }
+
+  /* Form elements */
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 5px;
+    margin-top: 14px;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="number"],
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--focus);
+    background: white;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 90px;
+  }
+
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* Autocomplete */
+  .autocomplete-wrap {
+    position: relative;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    z-index: 100;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .dropdown.open { display: block; }
+
+  .dropdown-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.95rem;
+  }
+
+  .dropdown-item:hover, .dropdown-item.focused {
+    background: #f5f0ea;
+  }
+
+  .dropdown-item .cp {
+    font-size: 0.78rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .dropdown-item .visits {
+    font-size: 0.72rem;
+    color: #bbb;
+  }
+
+  .new-city-row {
+    padding: 10px 14px;
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .new-city-row:hover { background: #fdf5ee; }
+
+  /* Stars */
+  .stars {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .star {
+    font-size: 2rem;
+    cursor: pointer;
+    color: #ddd;
+    transition: color 0.1s, transform 0.1s;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .star.on { color: #e8a020; }
+  .star:hover { transform: scale(1.15); }
+
+  .star-zero {
+    font-size: 0.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-left: 6px;
+    align-self: center;
+  }
+  .star-zero:hover { background: #f5f0ea; }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 6px;
+  }
+
+  .submit-btn:hover { background: var(--primary-dark); }
+  .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* Feedback banner */
+  #feedback {
+    display: none;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+
+  #feedback.success {
+    background: #eafaf1;
+    color: var(--success);
+    border: 1px solid #a9dfbf;
+    display: block;
+  }
+
+  #feedback.error {
+    background: #fdedec;
+    color: var(--danger);
+    border: 1px solid #f5b7b1;
+    display: block;
+  }
+
+  .agent-note {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  /* Details toggle */
+  details summary {
+    font-size: 0.82rem;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 14px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  details summary::before {
+    content: "▶";
+    font-size: 0.65rem;
+    transition: transform 0.15s;
+  }
+
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+
+<h1>🛍 Cobroc — Nouvelle visite</h1>
+
+<div id="feedback"></div>
+
+<form id="mainForm" autocomplete="off" novalidate>
+
+  <!-- Visiteur -->
+  <div class="card">
+    <div class="section-title">Visiteur</div>
+    <div class="toggle-group">
+      <button type="button" class="toggle-btn" id="btn-pml" onclick="setName('PML')">PML</button>
+      <button type="button" class="toggle-btn" id="btn-fra" onclick="setName('FRA')">FRA</button>
+    </div>
+  </div>
+
+  <!-- Date + Note -->
+  <div class="card">
+    <div class="section-title">Visite</div>
+    <div class="row2">
+      <div>
+        <label for="hist_date">Date</label>
+        <input type="date" id="hist_date" required>
+      </div>
+      <div>
+        <label>Note</label>
+        <div class="stars" id="stars">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+          <span class="star-zero" id="star-zero" title="Remettre à 0">✕</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lieu -->
+  <div class="card">
+    <div class="section-title">Lieu</div>
+
+    <label for="ville-input">Ville</label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="ville-input" placeholder="Tapez pour chercher…" autocomplete="off">
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label for="hist_code_postal">Code postal</label>
+        <input type="number" id="hist_code_postal" placeholder="95000">
+      </div>
+      <div>
+        <label for="hist_nb_expo">Nb exposants</label>
+        <input type="number" id="hist_nb_expo" placeholder="0" min="0">
+      </div>
+    </div>
+
+    <label for="hist_adresse">Adresse / lieu précis</label>
+    <input type="text" id="hist_adresse" placeholder="Parking, stade, centre-ville…">
+  </div>
+
+  <!-- Dépenses -->
+  <div class="card">
+    <div class="section-title">Dépenses (€)</div>
+    <div class="row3">
+      <div>
+        <label for="hist_pml_dep">PML</label>
+        <input type="number" id="hist_pml_dep" placeholder="0" min="0">
+      </div>
+      <div>
+        <label for="hist_fra_dep">FRA</label>
+        <input type="number" id="hist_fra_dep" placeholder="0" min="0">
+      </div>
+      <div>
+        <label for="hist_maison_dep">Maison</label>
+        <input type="number" id="hist_maison_dep" placeholder="0" min="0">
+      </div>
+    </div>
+  </div>
+
+  <!-- Avis -->
+  <div class="card">
+    <div class="section-title">Avis</div>
+    <textarea id="hist_avis" placeholder="Notes de visite, conseils, observations…"></textarea>
+
+    <details>
+      <summary>Détail des achats</summary>
+      <textarea id="hist_detail" style="margin-top:10px" placeholder="Liste des objets achetés…"></textarea>
+    </details>
+  </div>
+
+  <button type="submit" class="submit-btn" id="submitBtn">Enregistrer</button>
+
+</form>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedName = null;   // 'PML' | 'FRA'
+let selectedGood = 0;
+let selectedVille = null;  // { hist_ville, hist_code_postal, hist_adresse } or null
+let debounceTimer = null;
+let dropFocused = -1;
+let dropItems = [];
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.getElementById('hist_date').value = today();
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ── Visiteur ───────────────────────────────────────────────────────────────
+function setName(n) {
+  selectedName = n;
+  document.getElementById('btn-pml').classList.toggle('active', n === 'PML');
+  document.getElementById('btn-fra').classList.toggle('active', n === 'FRA');
+}
+
+// ── Stars ──────────────────────────────────────────────────────────────────
+document.querySelectorAll('.star').forEach(s => {
+  s.addEventListener('click', () => {
+    selectedGood = +s.dataset.v;
+    renderStars();
+  });
+  s.addEventListener('mouseover', () => highlightStars(+s.dataset.v));
+  s.addEventListener('mouseout', () => renderStars());
+});
+document.getElementById('star-zero').addEventListener('click', () => {
+  selectedGood = 0; renderStars();
+});
+
+function renderStars() {
+  document.querySelectorAll('.star').forEach(s => {
+    s.classList.toggle('on', +s.dataset.v <= selectedGood);
+  });
+}
+
+function highlightStars(v) {
+  document.querySelectorAll('.star').forEach(s => {
+    s.classList.toggle('on', +s.dataset.v <= v);
+  });
+}
+
+// ── Autocomplete ville ─────────────────────────────────────────────────────
+const villeInput = document.getElementById('ville-input');
+const dropdown   = document.getElementById('dropdown');
+
+villeInput.addEventListener('input', () => {
+  selectedVille = null;
+  clearTimeout(debounceTimer);
+  const q = villeInput.value.trim();
+  if (q.length < 2) { closeDropdown(); return; }
+  debounceTimer = setTimeout(() => fetchVilles(q), 250);
+});
+
+villeInput.addEventListener('keydown', e => {
+  if (!dropdown.classList.contains('open')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(-1); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (dropFocused >= 0) selectDropItem(dropFocused); }
+  else if (e.key === 'Escape') closeDropdown();
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) closeDropdown();
+});
+
+async function fetchVilles(q) {
+  try {
+    const res = await fetch(`/lieux?ville=${encodeURIComponent(q)}&sort=visites_desc&limit=8`);
+    const data = await res.json();
+    renderDropdown(data, q);
+  } catch { closeDropdown(); }
+}
+
+function renderDropdown(items, q) {
+  dropItems = items;
+  dropFocused = -1;
+  dropdown.innerHTML = '';
+
+  items.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'dropdown-item';
+    div.innerHTML = `
+      <span>${highlight(item.hist_ville, q)}</span>
+      <span class="cp">${item.hist_code_postal || ''}</span>
+      <span class="visits">${item.nb_visites} visite${item.nb_visites > 1 ? 's' : ''}</span>
+    `;
+    div.addEventListener('click', () => selectDropItem(i));
+    dropdown.appendChild(div);
+  });
+
+  // Option "Nouvelle ville"
+  const newRow = document.createElement('div');
+  newRow.className = 'new-city-row';
+  newRow.innerHTML = `<span>＋</span> Nouvelle ville « <strong>${q.toUpperCase()}</strong> »`;
+  newRow.addEventListener('click', () => pickNewCity(q));
+  dropdown.appendChild(newRow);
+
+  dropdown.classList.add('open');
+}
+
+function highlight(text, q) {
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx < 0) return text;
+  return text.slice(0, idx) + '<strong>' + text.slice(idx, idx + q.length) + '</strong>' + text.slice(idx + q.length);
+}
+
+function selectDropItem(i) {
+  const item = dropItems[i];
+  if (!item) return;
+  selectedVille = item;
+  villeInput.value = item.hist_ville;
+  if (item.hist_code_postal) document.getElementById('hist_code_postal').value = item.hist_code_postal;
+  if (item.hist_adresse) document.getElementById('hist_adresse').value = item.hist_adresse;
+  closeDropdown();
+}
+
+function pickNewCity(q) {
+  selectedVille = null;
+  villeInput.value = q.toUpperCase();
+  closeDropdown();
+  document.getElementById('hist_code_postal').focus();
+}
+
+function moveFocus(dir) {
+  const items = dropdown.querySelectorAll('.dropdown-item');
+  items.forEach((el, i) => el.classList.toggle('focused', i === dropFocused));
+  dropFocused = Math.max(-1, Math.min(dropItems.length - 1, dropFocused + dir));
+  items.forEach((el, i) => el.classList.toggle('focused', i === dropFocused));
+}
+
+function closeDropdown() {
+  dropdown.classList.remove('open');
+  dropFocused = -1;
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+document.getElementById('mainForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enregistrement…';
+
+  const body = {
+    hist_name:        selectedName,
+    hist_date:        document.getElementById('hist_date').value,
+    hist_good:        selectedGood,
+    hist_ville:       villeInput.value.trim().toUpperCase(),
+    hist_code_postal: parseInt(document.getElementById('hist_code_postal').value) || 0,
+    hist_adresse:     document.getElementById('hist_adresse').value.trim(),
+    hist_nb_expo:     parseInt(document.getElementById('hist_nb_expo').value) || 0,
+    hist_pml_dep:     parseInt(document.getElementById('hist_pml_dep').value) || 0,
+    hist_fra_dep:     parseInt(document.getElementById('hist_fra_dep').value) || 0,
+    hist_maison_dep:  parseInt(document.getElementById('hist_maison_dep').value) || 0,
+    hist_avis:        document.getElementById('hist_avis').value.trim(),
+    hist_detail:      document.getElementById('hist_detail').value.trim(),
+  };
+
+  try {
+    const res = await fetch('/historic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      showFeedback('success',
+        `✓ Visite enregistrée — ${data.hist_ville} (${data.hist_date})` +
+        (data.agent_notes ? `<div class="agent-note">Agent : ${data.agent_notes}</div>` : '')
+      );
+      resetForm();
+    } else {
+      const msg = data.detail || JSON.stringify(data);
+      showFeedback('error', `Erreur : ${msg}`);
+    }
+  } catch (err) {
+    showFeedback('error', `Erreur réseau : ${err.message}`);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Enregistrer';
+});
+
+function validate() {
+  let ok = true;
+
+  if (!selectedName) {
+    showFeedback('error', 'Choisissez un visiteur (PML ou FRA).');
+    return false;
+  }
+
+  if (!document.getElementById('hist_date').value) {
+    showFeedback('error', 'La date est obligatoire.');
+    return false;
+  }
+
+  const ville = villeInput.value.trim();
+  if (!ville) {
+    showFeedback('error', 'La ville est obligatoire.');
+    villeInput.focus();
+    return false;
+  }
+
+  if (!document.getElementById('hist_code_postal').value) {
+    showFeedback('error', 'Le code postal est obligatoire.');
+    document.getElementById('hist_code_postal').focus();
+    return false;
+  }
+
+  return ok;
+}
+
+function showFeedback(type, html) {
+  const el = document.getElementById('feedback');
+  el.className = type;
+  el.innerHTML = html;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetForm() {
+  selectedName = null;
+  selectedGood = 0;
+  selectedVille = null;
+  document.getElementById('btn-pml').classList.remove('active');
+  document.getElementById('btn-fra').classList.remove('active');
+  renderStars();
+  document.getElementById('hist_date').value = today();
+  villeInput.value = '';
+  ['hist_code_postal','hist_adresse','hist_nb_expo',
+   'hist_pml_dep','hist_fra_dep','hist_maison_dep',
+   'hist_avis','hist_detail'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+</script>
+</body>
+</html>

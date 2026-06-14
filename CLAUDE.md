@@ -1,0 +1,140 @@
+# cobroc-server
+
+Serveur REST local pour la base **historibroc** — historique des visites de brocantes de PML et FRA.  
+Objectif principal : partager et modifier la base depuis n'importe quelle machine du réseau local.
+
+## Stack
+
+| Composant | Détail |
+|-----------|--------|
+| Runtime | Python 3.11, venv `.venv/` |
+| Framework | FastAPI + Uvicorn |
+| Base de données | SQLite `db/historibroc.db` |
+| Validation IA | Claude Haiku via `agent/validator.py` |
+| Config | `.env` (copie de `.env.example`) |
+
+## Démarrage
+
+```bash
+source .venv/bin/activate
+uvicorn server:app --host 0.0.0.0 --port 8765 --reload
+```
+
+Accès réseau local : `http://<IP_DU_MAC>:8765`  
+Swagger UI : `http://<IP_DU_MAC>:8765/docs`
+
+## Structure des fichiers
+
+```
+server.py                           # Application FastAPI — toutes les routes
+agent/validator.py                  # Agent Claude Haiku : valide chaque entrée avant insertion
+db/schema.sql                       # DDL SQLite (tables lieux + historic + index)
+db/historibroc.db                   # Base SQLite (2236 entrées + 672 lieux)
+scripts/import_dart.py              # Migration initiale depuis historibroc.dart
+scripts/export_dart.py              # Export base → lib/historibroc.dart (projet Flutter cobroc)
+scripts/migrate_lieux.py            # Migration 1 : remplace la VIEW lieux par une TABLE, ajoute lieu_id à historic
+scripts/migrate_historic_lieux.py   # Migration 2 : peuple lieux depuis historic et relie lieu_id
+requirements.txt                    # fastapi, uvicorn, anthropic, python-dotenv
+.env                                # ANTHROPIC_API_KEY + DB_PATH (ne pas commiter)
+```
+
+## Table `lieux` — champs
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | INTEGER PK | Auto-increment |
+| `nom` | TEXT | Nom du marché/événement (ex : "Brocante d'ABLEIGES") |
+| `ville` | TEXT | Commune (forme canonique) |
+| `ville_normalized` | TEXT | Commune sans accents en majuscules (recherche) |
+| `code_postal` | INTEGER | Code postal français |
+| `adresse` | TEXT | Lieu précis |
+| `recurrence` | TEXT | `"mensuel"`, `"annuel"`, `"ponctuel"`, etc. |
+| `created_at` | TEXT | `datetime('now')` à l'insertion |
+
+## Table `historic` — champs
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | INTEGER PK | Auto-increment |
+| `hist_name` | TEXT | `"PML"` ou `"FRA"` |
+| `hist_date` | TEXT | Format `AAAA-MM-JJ` |
+| `hist_good` | INTEGER 0–5 | Note de la brocante |
+| `hist_ville` | TEXT | Commune (MAJUSCULES conseillé) |
+| `hist_code_postal` | INTEGER | Code postal français |
+| `hist_adresse` | TEXT | Lieu précis |
+| `hist_nb_expo` | INTEGER | Nombre d'exposants estimé |
+| `hist_pml_dep` | INTEGER | Dépenses PML (€) |
+| `hist_fra_dep` | INTEGER | Dépenses FRA (€) |
+| `hist_maison_dep` | INTEGER | Dépenses maison (€) |
+| `hist_avis` | TEXT | Commentaire libre |
+| `hist_detail` | TEXT | Achats détaillés |
+| `validated` | INTEGER 0/1 | Approuvé par l'agent Claude |
+| `agent_notes` | TEXT | Notes de l'agent après validation |
+| `created_at` | TEXT | `datetime('now')` à l'insertion |
+| `ville_normalized` | TEXT | Commune sans accents en majuscules (recherche) |
+| `lieu_id` | INTEGER FK | Référence vers `lieux.id` (nullable pour anciennes entrées) |
+
+## Routes API
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| GET | `/lieux` | Liste (filtres : `ville`, `cp`, `sort`) |
+| GET | `/lieux/{id}` | Lieu par ID |
+| POST | `/lieux` | Créer un lieu |
+| PUT | `/lieux/{id}` | Modifier un lieu |
+| DELETE | `/lieux/{id}` | Supprimer (refusé si utilisé dans historic) |
+| GET | `/historic` | Liste (filtres : `ville`, `name`, `validated`, `limit`, `offset`) |
+| GET | `/historic/{id}` | Entrée par ID |
+| POST | `/historic` | Créer (déclenche validation agent) |
+| PUT | `/historic/{id}` | Modifier (re-valide via agent) |
+| DELETE | `/historic/{id}` | Supprimer |
+| GET | `/export/dart` | Génère `historibroc.dart` en texte brut |
+| GET | `/stats` | Total, validés, en attente, répartition PML/FRA |
+
+## Variables d'environnement (`.env`)
+
+```
+ANTHROPIC_API_KEY=sk-ant-...   # Obligatoire pour la validation agent
+DB_PATH=./db/historibroc.db    # Chemin vers la base SQLite
+SERVER_HOST=0.0.0.0            # Écoute sur tout le réseau
+SERVER_PORT=8765
+```
+
+## Agent de validation (Claude Haiku)
+
+Chaque `POST /historic` et `PUT /historic/{id}` appelle `agent/validator.py` qui :
+1. Vérifie le format de la date et la cohérence ville/code postal
+2. Détecte les doublons potentiels (même ville + date + name)
+3. Suggère des corrections (`hist_ville`, `hist_avis`)
+4. Retourne `{"approved": bool, "notes": str, "suggestions": {...}}`
+
+Les suggestions approuvées sont appliquées avant insertion.
+
+## Commandes utiles
+
+```bash
+# Stats rapides
+curl http://localhost:8765/stats
+
+# Recherche par ville
+curl "http://localhost:8765/historic?ville=PONTOISE&limit=10"
+
+# Export Dart (après ajouts validés)
+curl http://localhost:8765/export/dart > ../cobroc/lib/historibroc.dart
+
+# Réimporter depuis Dart (reset complet)
+python scripts/import_dart.py
+```
+
+## Accès depuis le réseau local
+
+Le serveur démarre avec `--host 0.0.0.0`, ce qui l'expose sur toutes les interfaces réseau.  
+Depuis un autre appareil sur le même Wi-Fi/LAN, utiliser l'IP locale du Mac serveur :
+
+```bash
+# Trouver l'IP locale
+ipconfig getifaddr en0   # Wi-Fi
+ipconfig getifaddr en1   # Ethernet
+```
+
+Exemple d'accès depuis un autre Mac : `http://192.168.1.X:8765/docs`

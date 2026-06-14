@@ -1,0 +1,15 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Config locale (contient la clé API)
+.env
+
+# Base SQLite (copiée depuis/vers cobroc)
+db/historibroc.db
+
+# macOS
+.DS_Store
