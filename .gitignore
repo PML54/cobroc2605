@@ -13,3 +13,6 @@ db/historibroc.db
 
 # macOS
 .DS_Store
+
+# IDE JetBrains
+.idea/
