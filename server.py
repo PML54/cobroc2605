@@ -143,7 +143,7 @@ def list_historic(
     clauses, params = [], []
     if ville:
         clauses.append("NOACCENT(hist_ville) LIKE NOACCENT(?)")
-        params.append(f"%{ville}%")
+        params.append(f"{ville}%")          # match en début de ville uniquement
     if name:
         clauses.append("hist_name = ?")
         params.append(name)
@@ -292,7 +292,7 @@ def list_lieux(
     clauses, params = [], []
     if ville:
         clauses.append("NOACCENT(l.ville) LIKE NOACCENT(?)")
-        params.append(f"%{ville}%")
+        params.append(f"{ville}%")          # match en début de ville uniquement
     if cp is not None:
         clauses.append("l.code_postal = ?")
         params.append(cp)

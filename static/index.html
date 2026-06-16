@@ -158,14 +158,31 @@
     padding: 10px 14px;
     cursor: pointer;
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
+    flex-direction: column;
+    gap: 2px;
     font-size: 0.95rem;
   }
 
   .dropdown-item:hover, .dropdown-item.focused {
     background: #f5f0ea;
+  }
+
+  .dropdown-item .di-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .dropdown-item .di-ville { font-weight: 600; }
+
+  .dropdown-item .di-addr {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
   }
 
   .dropdown-item .cp {
@@ -177,6 +194,7 @@
   .dropdown-item .visits {
     font-size: 0.72rem;
     color: #bbb;
+    flex-shrink: 0;
   }
 
   .new-city-row {
@@ -294,6 +312,133 @@
 
   details[open] summary::before { transform: rotate(90deg); }
   details summary::-webkit-details-marker { display: none; }
+
+  /* Détail des achats : description + prix distincts */
+  #achats-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  .achat-row {
+    display: grid;
+    grid-template-columns: 1fr 90px 34px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .achat-prix-wrap { position: relative; }
+  .achat-prix-wrap::after {
+    content: "€";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+  .achat-prix { padding-right: 22px !important; }
+
+  .achat-del {
+    width: 34px; height: 38px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--danger);
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .achat-del:hover { background: #fdedec; }
+
+  .add-achat {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .add-achat:hover { background: #fdf5ee; }
+
+  /* Champs lecture seule (couple sélectionné) */
+  input.ro {
+    background: #efe9e1;
+    color: var(--text);
+    cursor: default;
+  }
+  input.ro:focus { border-color: var(--border); background: #efe9e1; }
+
+  /* Modale Nouveau lieu */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+
+  .modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .btn {
+    padding: 14px;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+  }
+  .btn-primary {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+  }
+  .btn-primary:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+
+  #nl_error {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fdedec;
+    color: var(--danger);
+    border: 1px solid #f5b7b1;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  #nl_error.show { display: block; }
 </style>
 </head>
 <body>
@@ -339,16 +484,19 @@
   <div class="card">
     <div class="section-title">Lieu</div>
 
-    <label for="ville-input">Ville</label>
+    <label for="loc_q">Ville</label>
     <div class="autocomplete-wrap">
-      <input type="text" id="ville-input" placeholder="Tapez pour chercher…" autocomplete="off">
+      <input type="text" id="loc_q" name="loc_q" placeholder="Chercher un lieu existant…"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+             data-1p-ignore data-lpignore="true"
+             readonly onfocus="this.removeAttribute('readonly')">
       <div class="dropdown" id="dropdown"></div>
     </div>
 
     <div class="row2">
       <div>
-        <label for="hist_code_postal">Code postal</label>
-        <input type="number" id="hist_code_postal" placeholder="95000">
+        <label for="fpc">Code postal</label>
+        <input type="number" id="fpc" name="fpc" class="ro" placeholder="—" readonly tabindex="-1">
       </div>
       <div>
         <label for="hist_nb_expo">Nb exposants</label>
@@ -356,8 +504,8 @@
       </div>
     </div>
 
-    <label for="hist_adresse">Adresse / lieu précis</label>
-    <input type="text" id="hist_adresse" placeholder="Parking, stade, centre-ville…">
+    <label for="floc">Adresse / lieu précis</label>
+    <input type="text" id="floc" name="floc" class="ro" placeholder="—" readonly tabindex="-1">
   </div>
 
   <!-- Dépenses -->
@@ -386,13 +534,49 @@
 
     <details>
       <summary>Détail des achats</summary>
-      <textarea id="hist_detail" style="margin-top:10px" placeholder="Liste des objets achetés…"></textarea>
+      <div id="achats-list"></div>
+      <button type="button" class="add-achat" id="addAchat">＋ Ajouter un objet</button>
     </details>
   </div>
 
   <button type="submit" class="submit-btn" id="submitBtn">Enregistrer</button>
 
 </form>
+
+<!-- Modale : Nouveau lieu -->
+<div class="modal-overlay" id="lieuModal">
+  <div class="modal">
+    <div class="modal-title">📍 Nouveau lieu</div>
+
+    <label for="nlv">Ville</label>
+    <input type="text" id="nlv" name="nlv" autocomplete="off" autocapitalize="characters" spellcheck="false"
+           data-1p-ignore data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+
+    <label for="nlp">Code postal</label>
+    <input type="number" id="nlp" name="nlp" placeholder="95000" autocomplete="off"
+           data-1p-ignore data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+
+    <label for="nll">Adresse / lieu précis</label>
+    <input type="text" id="nll" name="nll" placeholder="Parking, stade, centre-ville…"
+           autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true"
+           readonly onfocus="this.removeAttribute('readonly')">
+
+    <label for="nln">Nom (optionnel)</label>
+    <input type="text" id="nln" name="nln" placeholder="Brocante de…, Vide-grenier…" autocomplete="off"
+           data-1p-ignore data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+
+    <label for="nlr">Récurrence (optionnel)</label>
+    <input type="text" id="nlr" name="nlr" placeholder="mensuel, annuel, ponctuel…" autocomplete="off"
+           data-1p-ignore data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
+
+    <div id="nl_error"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn" id="nl_cancel">Annuler</button>
+      <button type="button" class="btn btn-primary" id="nl_create">Créer</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
@@ -443,14 +627,17 @@ function highlightStars(v) {
 }
 
 // ── Autocomplete ville ─────────────────────────────────────────────────────
-const villeInput = document.getElementById('ville-input');
+const villeInput = document.getElementById('loc_q');
 const dropdown   = document.getElementById('dropdown');
 
 villeInput.addEventListener('input', () => {
+  villeInput.value = villeInput.value.toUpperCase();   // force majuscules
   selectedLieuId = null;
+  document.getElementById('fpc').value = '';
+  document.getElementById('floc').value = '';
   clearTimeout(debounceTimer);
   const q = villeInput.value.trim();
-  if (q.length < 2) { closeDropdown(); return; }
+  if (q.length < 1) { closeDropdown(); return; }       // dès la 1re lettre
   debounceTimer = setTimeout(() => fetchVilles(q), 250);
 });
 
@@ -482,11 +669,17 @@ function renderDropdown(items, q) {
   items.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'dropdown-item';
-    const label = item.nom ? `${item.nom} — ${item.ville}` : item.ville;
+    const titre = item.nom ? `${escapeHtml(item.nom)} — ${item.ville}` : item.ville;
+    const addr  = item.adresse ? escapeHtml(item.adresse) : '—';
     div.innerHTML = `
-      <span>${highlight(label, q)}</span>
-      <span class="cp">${item.code_postal || ''}</span>
-      <span class="visits">${item.nb_visites} visite${item.nb_visites > 1 ? 's' : ''}</span>
+      <div class="di-top">
+        <span class="di-ville">${highlight(titre, q)}</span>
+        <span class="cp">${item.code_postal || ''}</span>
+      </div>
+      <div class="di-addr">
+        <span>${addr}</span>
+        <span class="visits">${item.nb_visites} visite${item.nb_visites > 1 ? 's' : ''}</span>
+      </div>
     `;
     div.addEventListener('click', () => selectDropItem(i));
     dropdown.appendChild(div);
@@ -495,10 +688,16 @@ function renderDropdown(items, q) {
   const newRow = document.createElement('div');
   newRow.className = 'new-city-row';
   newRow.innerHTML = `<span>＋</span> Nouveau lieu « <strong>${q.toUpperCase()}</strong> »`;
-  newRow.addEventListener('click', () => pickNewCity(q));
+  newRow.addEventListener('click', () => openLieuModal(q));
   dropdown.appendChild(newRow);
 
   dropdown.classList.add('open');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
 }
 
 function highlight(text, q) {
@@ -507,21 +706,19 @@ function highlight(text, q) {
   return text.slice(0, idx) + '<strong>' + text.slice(idx, idx + q.length) + '</strong>' + text.slice(idx + q.length);
 }
 
+// Applique un lieu sélectionné (depuis la liste OU après création dans la modale)
+function applyLieu(lieu) {
+  selectedLieuId = lieu.id;
+  villeInput.value = lieu.ville;
+  document.getElementById('fpc').value  = lieu.code_postal || '';
+  document.getElementById('floc').value = lieu.adresse || '';
+}
+
 function selectDropItem(i) {
   const item = dropItems[i];
   if (!item) return;
-  selectedLieuId = item.id;
-  villeInput.value = item.ville;
-  if (item.code_postal) document.getElementById('hist_code_postal').value = item.code_postal;
-  if (item.adresse) document.getElementById('hist_adresse').value = item.adresse;
+  applyLieu(item);
   closeDropdown();
-}
-
-function pickNewCity(q) {
-  selectedLieuId = null;
-  villeInput.value = q.toUpperCase();
-  closeDropdown();
-  document.getElementById('hist_code_postal').focus();
 }
 
 function moveFocus(dir) {
@@ -536,6 +733,122 @@ function closeDropdown() {
   dropFocused = -1;
 }
 
+// ── Modale : Nouveau lieu ────────────────────────────────────────────────────
+const lieuModal = document.getElementById('lieuModal');
+
+function openLieuModal(prefillVille) {
+  closeDropdown();
+  document.getElementById('nlv').value      = (prefillVille || '').trim().toUpperCase();
+  document.getElementById('nlp').value         = '';
+  document.getElementById('nll').value    = '';
+  document.getElementById('nln').value        = '';
+  document.getElementById('nlr').value = '';
+  hideLieuError();
+  lieuModal.classList.add('open');
+  document.getElementById('nlp').focus();
+}
+
+function closeLieuModal() {
+  lieuModal.classList.remove('open');
+}
+
+function showLieuError(msg) {
+  const el = document.getElementById('nl_error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function hideLieuError() {
+  document.getElementById('nl_error').classList.remove('show');
+}
+
+document.getElementById('nl_cancel').addEventListener('click', closeLieuModal);
+lieuModal.addEventListener('click', e => { if (e.target === lieuModal) closeLieuModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && lieuModal.classList.contains('open')) closeLieuModal();
+});
+
+document.getElementById('nl_create').addEventListener('click', createLieu);
+
+async function createLieu() {
+  const ville      = document.getElementById('nlv').value.trim().toUpperCase();
+  const cp         = parseInt(document.getElementById('nlp').value) || 0;
+  const adresse    = document.getElementById('nll').value.trim();
+  const nom        = document.getElementById('nln').value.trim();
+  const recurrence = document.getElementById('nlr').value.trim();
+
+  if (!ville) { showLieuError('La ville est obligatoire.'); return; }
+  if (!cp)    { showLieuError('Le code postal est obligatoire.'); return; }
+
+  const btn = document.getElementById('nl_create');
+  btn.disabled = true;
+  btn.textContent = 'Création…';
+  hideLieuError();
+
+  try {
+    const res = await fetch('/lieux', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom, ville, code_postal: cp, adresse, recurrence }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      applyLieu(data);
+      closeLieuModal();
+      showFeedback('success', `✓ Lieu créé : ${data.ville}${data.adresse ? ' — ' + data.adresse : ''}`);
+    } else {
+      showLieuError(data.detail || 'Erreur lors de la création du lieu.');
+    }
+  } catch (err) {
+    showLieuError('Erreur réseau : ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Créer';
+}
+
+// ── Détail des achats (description + prix distincts) ─────────────────────────
+const achatsList = document.getElementById('achats-list');
+
+function addAchatRow(desc = '', prix = '') {
+  const row = document.createElement('div');
+  row.className = 'achat-row';
+  row.innerHTML = `
+    <input type="text" class="achat-desc" placeholder="Objet acheté…" autocomplete="off"
+           spellcheck="false" data-1p-ignore data-lpignore="true" value="${escapeHtml(desc)}">
+    <div class="achat-prix-wrap">
+      <input type="number" class="achat-prix" placeholder="0" min="0" step="1"
+             inputmode="numeric" autocomplete="off" value="${escapeHtml(prix)}">
+    </div>
+    <button type="button" class="achat-del" title="Retirer cet objet">✕</button>
+  `;
+  row.querySelector('.achat-del').addEventListener('click', () => {
+    row.remove();
+    if (!achatsList.querySelector('.achat-row')) addAchatRow();   // garder au moins 1 ligne
+  });
+  achatsList.appendChild(row);
+}
+
+// Recompose la chaîne hist_detail au format existant : "desc=prix€+desc=prix€…"
+function buildDetail() {
+  const parts = [];
+  achatsList.querySelectorAll('.achat-row').forEach(row => {
+    const desc = row.querySelector('.achat-desc').value.trim();
+    const prix = row.querySelector('.achat-prix').value.trim();
+    if (!desc && !prix) return;
+    parts.push(prix ? `${desc}=${prix}€` : desc);
+  });
+  return parts.join('+');
+}
+
+function resetAchats() {
+  achatsList.innerHTML = '';
+  addAchatRow();
+}
+
+document.getElementById('addAchat').addEventListener('click', () => addAchatRow());
+addAchatRow();   // une ligne vide au départ
+
 // ── Submit ─────────────────────────────────────────────────────────────────
 document.getElementById('mainForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -546,25 +859,9 @@ document.getElementById('mainForm').addEventListener('submit', async e => {
   btn.textContent = 'Enregistrement…';
 
   const ville       = villeInput.value.trim().toUpperCase();
-  const code_postal = parseInt(document.getElementById('hist_code_postal').value) || 0;
-  const adresse     = document.getElementById('hist_adresse').value.trim();
-
-  // Créer le lieu s'il est nouveau
-  let lieu_id = selectedLieuId;
-  if (!lieu_id) {
-    try {
-      const lieuRes = await fetch('/lieux', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom: '', ville, code_postal, adresse, recurrence: '' }),
-      });
-      if (lieuRes.ok) {
-        const lieu = await lieuRes.json();
-        lieu_id = lieu.id;
-        selectedLieuId = lieu_id;
-      }
-    } catch { /* lieu non créé, on continue sans */ }
-  }
+  const code_postal = parseInt(document.getElementById('fpc').value) || 0;
+  const adresse     = document.getElementById('floc').value.trim();
+  const lieu_id     = selectedLieuId;
 
   const body = {
     hist_name:        selectedName,
@@ -578,7 +875,7 @@ document.getElementById('mainForm').addEventListener('submit', async e => {
     hist_fra_dep:     parseInt(document.getElementById('hist_fra_dep').value) || 0,
     hist_maison_dep:  parseInt(document.getElementById('hist_maison_dep').value) || 0,
     hist_avis:        document.getElementById('hist_avis').value.trim(),
-    hist_detail:      document.getElementById('hist_detail').value.trim(),
+    hist_detail:      buildDetail(),
     lieu_id,
   };
 
@@ -622,16 +919,9 @@ function validate() {
     return false;
   }
 
-  const ville = villeInput.value.trim();
-  if (!ville) {
-    showFeedback('error', 'La ville est obligatoire.');
+  if (!selectedLieuId) {
+    showFeedback('error', 'Choisissez un lieu dans la liste, ou créez-en un avec « ＋ Nouveau lieu ».');
     villeInput.focus();
-    return false;
-  }
-
-  if (!document.getElementById('hist_code_postal').value) {
-    showFeedback('error', 'Le code postal est obligatoire.');
-    document.getElementById('hist_code_postal').focus();
     return false;
   }
 
@@ -654,11 +944,12 @@ function resetForm() {
   renderStars();
   document.getElementById('hist_date').value = today();
   villeInput.value = '';
-  ['hist_code_postal','hist_adresse','hist_nb_expo',
+  ['fpc','floc','hist_nb_expo',
    'hist_pml_dep','hist_fra_dep','hist_maison_dep',
-   'hist_avis','hist_detail'].forEach(id => {
+   'hist_avis'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  resetAchats();
 }
 </script>
 </body>
