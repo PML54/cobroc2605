@@ -49,6 +49,10 @@ requirements.txt                    # fastapi, uvicorn, anthropic, python-dotenv
 | `code_postal` | INTEGER | Code postal français |
 | `adresse` | TEXT | Lieu précis |
 | `recurrence` | TEXT | `"mensuel"`, `"annuel"`, `"ponctuel"`, etc. |
+| `parking` | INTEGER 0/1 | Endroit : parking |
+| `rues` | INTEGER 0/1 | Endroit : rues |
+| `stade` | INTEGER 0/1 | Endroit : stade |
+| `espace` | INTEGER 0/1 | Endroit : espace |
 | `created_at` | TEXT | `datetime('now')` à l'insertion |
 
 ## Table `historic` — champs

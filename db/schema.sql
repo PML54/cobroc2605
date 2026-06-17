@@ -6,6 +6,10 @@ CREATE TABLE IF NOT EXISTS lieux (
   code_postal      INTEGER NOT NULL DEFAULT 0,
   adresse          TEXT    NOT NULL DEFAULT '',
   recurrence       TEXT    NOT NULL DEFAULT '',
+  parking          INTEGER NOT NULL DEFAULT 0,
+  rues             INTEGER NOT NULL DEFAULT 0,
+  stade            INTEGER NOT NULL DEFAULT 0,
+  espace           INTEGER NOT NULL DEFAULT 0,
   created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 

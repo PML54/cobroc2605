@@ -439,6 +439,41 @@
     font-weight: 600;
   }
   #nl_error.show { display: block; }
+
+  /* Endroit : cases à cocher */
+  .endroit-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .endroit-group .chk {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+  .endroit-group .chk input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .endroit-group .chk:has(input:checked) {
+    border-color: var(--primary);
+    background: #fdf5ee;
+    color: var(--primary-dark);
+  }
 </style>
 </head>
 <body>
@@ -569,6 +604,14 @@
     <input type="text" id="nlr" name="nlr" placeholder="mensuel, annuel, ponctuel…" autocomplete="off"
            data-1p-ignore data-lpignore="true" readonly onfocus="this.removeAttribute('readonly')">
 
+    <label>Endroit</label>
+    <div class="endroit-group">
+      <label class="chk"><input type="checkbox" id="nl_parking"> Parking</label>
+      <label class="chk"><input type="checkbox" id="nl_rues"> Rues</label>
+      <label class="chk"><input type="checkbox" id="nl_stade"> Stade</label>
+      <label class="chk"><input type="checkbox" id="nl_espace"> Espace</label>
+    </div>
+
     <div id="nl_error"></div>
 
     <div class="modal-actions">
@@ -586,13 +629,6 @@ let selectedLieuId = null; // id du lieu sélectionné dans le dropdown, null si
 let debounceTimer = null;
 let dropFocused = -1;
 let dropItems = [];
-
-// ── Init ───────────────────────────────────────────────────────────────────
-document.getElementById('hist_date').value = today();
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // ── Visiteur ───────────────────────────────────────────────────────────────
 function setName(n) {
@@ -743,6 +779,9 @@ function openLieuModal(prefillVille) {
   document.getElementById('nll').value    = '';
   document.getElementById('nln').value        = '';
   document.getElementById('nlr').value = '';
+  ['nl_parking','nl_rues','nl_stade','nl_espace'].forEach(
+    id => { document.getElementById(id).checked = false; }
+  );
   hideLieuError();
   lieuModal.classList.add('open');
   document.getElementById('nlp').focus();
@@ -776,6 +815,12 @@ async function createLieu() {
   const adresse    = document.getElementById('nll').value.trim();
   const nom        = document.getElementById('nln').value.trim();
   const recurrence = document.getElementById('nlr').value.trim();
+  const endroit = {
+    parking: document.getElementById('nl_parking').checked ? 1 : 0,
+    rues:    document.getElementById('nl_rues').checked    ? 1 : 0,
+    stade:   document.getElementById('nl_stade').checked   ? 1 : 0,
+    espace:  document.getElementById('nl_espace').checked  ? 1 : 0,
+  };
 
   if (!ville) { showLieuError('La ville est obligatoire.'); return; }
   if (!cp)    { showLieuError('Le code postal est obligatoire.'); return; }
@@ -789,7 +834,7 @@ async function createLieu() {
     const res = await fetch('/lieux', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom, ville, code_postal: cp, adresse, recurrence }),
+      body: JSON.stringify({ nom, ville, code_postal: cp, adresse, recurrence, ...endroit }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -942,7 +987,7 @@ function resetForm() {
   document.getElementById('btn-pml').classList.remove('active');
   document.getElementById('btn-fra').classList.remove('active');
   renderStars();
-  document.getElementById('hist_date').value = today();
+  document.getElementById('hist_date').value = '';
   villeInput.value = '';
   ['fpc','floc','hist_nb_expo',
    'hist_pml_dep','hist_fra_dep','hist_maison_dep',

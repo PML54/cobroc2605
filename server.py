@@ -80,6 +80,10 @@ class LieuIn(BaseModel):
     code_postal: int
     adresse:     str = ""
     recurrence:  str = ""
+    parking:     int = Field(0, ge=0, le=1)
+    rues:        int = Field(0, ge=0, le=1)
+    stade:       int = Field(0, ge=0, le=1)
+    espace:      int = Field(0, ge=0, le=1)
 
 
 class LieuOut(BaseModel):
@@ -89,6 +93,10 @@ class LieuOut(BaseModel):
     code_postal: int
     adresse:     str
     recurrence:  str
+    parking:     int = 0
+    rues:        int = 0
+    stade:       int = 0
+    espace:      int = 0
     created_at:  str
     nb_visites:  int = 0
 
@@ -334,8 +342,12 @@ def create_lieu(lieu: LieuIn):
     data = lieu.model_dump()
     data["ville_normalized"] = _noaccent(data["ville"])
     sql = """
-        INSERT INTO lieux (nom, ville, ville_normalized, code_postal, adresse, recurrence)
-        VALUES (:nom, :ville, :ville_normalized, :code_postal, :adresse, :recurrence)
+        INSERT INTO lieux
+          (nom, ville, ville_normalized, code_postal, adresse, recurrence,
+           parking, rues, stade, espace)
+        VALUES
+          (:nom, :ville, :ville_normalized, :code_postal, :adresse, :recurrence,
+           :parking, :rues, :stade, :espace)
     """
     with _db() as con:
         cur = con.execute(sql, data)
@@ -355,7 +367,8 @@ def update_lieu(lieu_id: int, lieu: LieuIn):
         con.execute("""
             UPDATE lieux SET
               nom=:nom, ville=:ville, ville_normalized=:ville_normalized,
-              code_postal=:code_postal, adresse=:adresse, recurrence=:recurrence
+              code_postal=:code_postal, adresse=:adresse, recurrence=:recurrence,
+              parking=:parking, rues=:rues, stade=:stade, espace=:espace
             WHERE id=:id
         """, data)
         con.commit()
