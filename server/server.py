@@ -50,8 +50,15 @@ def _noaccent_collate(a: str, b: str) -> int:
 def _init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB_PATH)
-    con.executescript(SCHEMA.read_text())
-    con.commit()
+    # schema.sql est un dump (CREATE TABLE sans IF NOT EXISTS) : le rejouer sur une
+    # base déjà peuplée échoue ("table historic already exists"). On ne l'applique
+    # donc que si la base est vierge (pas encore de table historic).
+    exists = con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='historic'"
+    ).fetchone()
+    if not exists:
+        con.executescript(SCHEMA.read_text())
+        con.commit()
     con.close()
 
 

@@ -86,10 +86,15 @@ rebuildé l'app.
 
 ## 3. Démarrer le serveur
 
+> ⚠️ **Toujours lancer depuis `server/`** : `server.py` utilise des chemins
+> relatifs (`db/schema.sql`, `db/historibroc.db`) et `load_dotenv()` charge le
+> `.env` du répertoire courant. Lancé d'ailleurs → mauvaise base ou clé non chargée.
+
 ```bash
-cd server
-source .venv/bin/activate                 # créer le venv au besoin : python3.11 -m venv .venv
-pip install -r requirements.txt           # première fois
+cd /Users/pml/StudioProjects/cobroc/server
+python3.11 -m venv .venv                   # première fois seulement
+source .venv/bin/activate
+pip install -r requirements.txt            # première fois (fastapi, uvicorn, anthropic, python-dotenv)
 uvicorn server:app --host 0.0.0.0 --port 8765 --reload
 ```
 
@@ -187,7 +192,50 @@ cd /Users/pml/StudioProjects/cobroc && git diff lib/historibroc.dart
 ## 7. L'ancien repo `cobroc-server` est-il encore utile ?
 
 **Non pour le travail courant** : tout l'outillage (serveur, scripts, base versionnée,
-agent) vit désormais dans `server/`. L'ancien dépôt
-`~/StudioProjects/cobroc-server` ne sert plus qu'éventuellement de **référence
-d'historique git** (le subtree a écrasé l'historique détaillé en un commit). À
-archiver en lecture seule plutôt qu'à utiliser au quotidien.
+agent) vit désormais dans `server/`. L'ancien dépôt a été **archivé** en
+`~/StudioProjects/cobroc-server.ARCHIVE` (purement local, jamais poussé) — il ne sert
+plus qu'éventuellement de **référence d'historique git** (le subtree a écrasé
+l'historique détaillé en un commit). Ne pas y relancer de serveur : il porte l'ancien
+`.env` (clé révoquée) → voir §8.
+
+---
+
+## 8. Dépannage
+
+### « Erreur réseau : Unexpected token 'I', "Internal S"… is not valid JSON »
+
+L'appli web de saisie a reçu une **500 Internal Server Error** (texte brut) au lieu de
+JSON lors d'un `POST /historic`. Une exception remonte côté serveur, le plus souvent
+dans l'appel à l'agent de validation Anthropic. Causes fréquentes :
+
+1. **Clé API invalide / révoquée** → l'API renvoie 401, l'exception n'est pas gérée → 500.
+   - Vérifier que `server/.env` contient une clé **valide** et que le serveur a été
+     **redémarré** après tout changement de clé (la clé est lue au boot via
+     `load_dotenv()`, un process déjà lancé garde l'ancienne en mémoire).
+   - Piège classique : un **vieux serveur** tourne encore (ex. lancé depuis
+     `cobroc-server.ARCHIVE` avec l'ancien `.env`). Vérifier qui écoute :
+     ```bash
+     lsof -nP -iTCP:8765 -sTCP:LISTEN     # PID du process
+     lsof -p <PID> | grep cwd             # depuis quel dossier il tourne
+     kill <PID>                           # tuer le mauvais, relancer depuis server/ (§3)
+     ```
+   - Tester la clé directement (hors serveur) :
+     ```bash
+     curl -s https://api.anthropic.com/v1/messages \
+       -H "x-api-key: $(grep ^ANTHROPIC_API_KEY= server/.env | cut -d= -f2-)" \
+       -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+       -d '{"model":"claude-haiku-4-5-20251001","max_tokens":16,"messages":[{"role":"user","content":"ping"}]}'
+     ```
+
+2. **Lire la vraie cause** : toujours regarder le traceback du serveur
+   (terminal `uvicorn`, ou le fichier de log si lancé en arrière-plan).
+
+### Au démarrage : `sqlite3.OperationalError: table historic already exists`
+
+`schema.sql` est un dump (sans `IF NOT EXISTS`). `_init_db()` ne l'applique désormais
+**que si la base est vierge** ; si l'erreur réapparaît, c'est une version de `server.py`
+antérieure à ce correctif. Lancer depuis `server/` avec le code à jour.
+
+### Lancer le serveur correctement
+
+Voir §3 : **depuis `server/`**, venv activé, deps installées.
