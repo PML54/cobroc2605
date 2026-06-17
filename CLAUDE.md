@@ -128,6 +128,37 @@ Chaque `POST /historic` et `PUT /historic/{id}` appelle `agent/validator.py` qui
 
 Les suggestions approuvées sont appliquées avant insertion.
 
+## Export vers l'appli Flutter `cobroc`
+
+L'appli `cobroc` (iPhone surtout, web parfois) **ne lit PAS la base SQLite au runtime**.
+Elle consomme un fichier Dart généré, **`cobroc/lib/historibroc.dart`**, qui contient la
+classe `Historic` et une liste `listHistoric` en dur (données embarquées au build → offline).
+Copier la `.db` dans `cobroc/` ne met donc **rien** à jour.
+
+**Workflow de mise à jour des données de l'appli :**
+
+```bash
+# 1. Régénérer le fichier Dart depuis la base
+python scripts/export_dart.py            # écrit cobroc/lib/historibroc.dart
+# (ou : curl http://localhost:8765/export/dart > ../cobroc/lib/historibroc.dart)
+
+# 2. Rebuilder/redéployer l'appli Flutter (étape indispensable, données bundlées)
+```
+
+Points clés de `scripts/export_dart.py` :
+- N'exporte que les entrées **`validated = 1`**. Les saisies du formulaire web sont
+  `validated = 0` tant que l'agent ne les a pas approuvées → **elles ne s'exportent pas**.
+- Le template de la classe `Historic` (dans le script) doit rester **synchronisé** avec
+  ce qu'attend le code Dart de `cobroc` (ex. la méthode statique `matchesVille`, utilisée
+  par `detailedBrocante.dart`). Toute régénération **écrase** `historibroc.dart`.
+- Les champs enrichis (`heureArrivee`, `pluie`, `arriveeTard`, et l'endroit du lieu
+  `parking`/`rues`/`stade`/`espace` via LEFT JOIN `lieux`) sont émis en **paramètres
+  nommés optionnels**, et **seulement s'ils sont non-défaut** → les anciennes lignes
+  restent inchangées, rétro-compatibles.
+- Ces champs sont **transportés** dans les objets `Historic` mais pas encore **affichés** :
+  montrer heure/pluie/endroit nécessite d'ajouter de l'UI côté `cobroc`.
+- Valider le fichier généré : `cd ../cobroc && dart analyze lib/historibroc.dart`.
+
 ## Commandes utiles
 
 ```bash

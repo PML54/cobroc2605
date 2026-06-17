@@ -28,9 +28,17 @@ def _to_dmy(date_str: str) -> str:
 def generate_dart(db_path: Path) -> str:
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
-    rows = con.execute(
-        "SELECT * FROM historic WHERE validated=1 ORDER BY id"
-    ).fetchall()
+    rows = con.execute("""
+        SELECT h.*,
+               COALESCE(l.parking, 0) AS parking,
+               COALESCE(l.rues,    0) AS rues,
+               COALESCE(l.stade,   0) AS stade,
+               COALESCE(l.espace,  0) AS espace
+        FROM historic h
+        LEFT JOIN lieux l ON l.id = h.lieu_id
+        WHERE h.validated = 1
+        ORDER BY h.id
+    """).fetchall()
     con.close()
 
     now = datetime.now().strftime("%y%m%d%H%M")
@@ -61,6 +69,14 @@ def generate_dart(db_path: Path) -> str:
         "  int histCode = 0;",
         "  DateTime histCheckDate = DateTime(2023, 07, 26);",
         '  String villeNormalized = "";',
+        "  // Nouveaux champs (export enrichi)",
+        '  String heureArrivee = "";',
+        "  int pluie = 0;        // 0/1",
+        "  int arriveeTard = 0;  // 0/1",
+        "  int parking = 0;      // endroit du lieu, 0/1",
+        "  int rues = 0;",
+        "  int stade = 0;",
+        "  int espace = 0;",
         "",
         "  Historic(",
         "      this.histName,",
@@ -74,7 +90,15 @@ def generate_dart(db_path: Path) -> str:
         "      this.histFraDep,",
         "      this.histMaisonDep,",
         "      this.histAvis,",
-        "      this.histDetail) {",
+        "      this.histDetail, {",
+        '      this.heureArrivee = "",',
+        "      this.pluie = 0,",
+        "      this.arriveeTard = 0,",
+        "      this.parking = 0,",
+        "      this.rues = 0,",
+        "      this.stade = 0,",
+        "      this.espace = 0,",
+        "      }) {",
         "    BreakDate bri = BreakDate(histDate);",
         "    histCheckDate = bri.checkDate;",
         "    this.histVille =",
@@ -91,6 +115,15 @@ def generate_dart(db_path: Path) -> str:
         "  static String normalizeString(String str) {",
         "    String withoutDiacritics = removeDiacritics(str);",
         "    return withoutDiacritics.toUpperCase().replaceAll(RegExp('[^A-Z]'), '');",
+        "  }",
+        "",
+        "  // Match exact OU préfixe : \"ERAGNY\" matche \"ERAGNYSUROISE\" et vice-versa",
+        "  static bool matchesVille(String histVille, String searchVille) {",
+        "    final hn = normalizeString(histVille);",
+        "    final sn = normalizeString(searchVille);",
+        "    if (hn == sn) return true;",
+        "    if (hn.length < 4 || sn.length < 4) return false;",
+        "    return hn.startsWith(sn) || sn.startsWith(hn);",
         "  }",
         "}",
         "",
@@ -111,9 +144,28 @@ def generate_dart(db_path: Path) -> str:
         avis    = _escape(row["hist_avis"])
         detail  = _escape(row["hist_detail"])
 
+        # Champs enrichis : émis uniquement si non-défaut (lignes minimales)
+        extras = []
+        heure = (row["heure_arrivee"] or "").strip()
+        if heure:
+            extras.append(f'heureArrivee: "{_escape(heure)}"')
+        if row["pluie"]:
+            extras.append("pluie: 1")
+        if row["arrivee_tard"]:
+            extras.append("arriveeTard: 1")
+        if row["parking"]:
+            extras.append("parking: 1")
+        if row["rues"]:
+            extras.append("rues: 1")
+        if row["stade"]:
+            extras.append("stade: 1")
+        if row["espace"]:
+            extras.append("espace: 1")
+        extra_str = (", " + ", ".join(extras)) if extras else ""
+
         lines.append(
             f'  Historic("{name}", "{date}", {good}, "{ville}", {cp}, '
-            f'"{adresse}", {expo}, {pml}, {fra}, {maison}, "{avis}", "{detail}"),'
+            f'"{adresse}", {expo}, {pml}, {fra}, {maison}, "{avis}", "{detail}"{extra_str}),'
         )
 
     lines.append("];")
