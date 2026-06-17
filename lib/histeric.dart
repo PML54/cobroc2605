@@ -1,7 +1,7 @@
 // lib/histeric.dart
-// Modified: 260606161500
+// Modified: 2606170752
 // Histeric — navigation dans l'historique par commune
-// CHANGEMENTS: (1) loadHistorics: remplace normalizeString == par Historic.matchesVille pour match partiel, ligne 51
+// CHANGEMENTS: (1) buildHistoricDetails: affichage conditionnel heureArrivee + badges contexte (pluie, arriveeTard, parking, rues, stade, espace) lignes 104-107, (2) ajout buildContexte()/_badge() lignes 113-142
 import 'package:cobroc/historibroc.dart';
 import 'package:diacritic/diacritic.dart';
 import 'package:flutter/material.dart';
@@ -19,14 +19,17 @@ class _HistericState extends State<Histeric> {
 
   @override
   Widget build(BuildContext context) {
-    final String thatCommune = ModalRoute.of(context)?.settings.arguments as String? ?? "";
+    final String thatCommune =
+        ModalRoute.of(context)?.settings.arguments as String? ?? "";
     if (myHistoric.isEmpty) {
       loadHistorics(thatCommune);
     }
 
     return Scaffold(
       appBar: buildAppBar(),
-      body: currentHistoric == null ? const Center(child: Text("No data available")) : buildHistoricDetails(),
+      body: currentHistoric == null
+          ? const Center(child: Text("No data available"))
+          : buildHistoricDetails(),
     );
   }
 
@@ -80,24 +83,76 @@ class _HistericState extends State<Histeric> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('${currentHistoric!.histName} : #${currentHistoric!.histDate}#', style: TextStyle(fontSize: 20, color: getColorByRating(currentHistoric!.histGood))),
-          Text('Exposants: <${currentHistoric!.histNbExpo}>', style: const TextStyle(fontSize: 20)),
-          Text('Commune: ${currentHistoric!.histVille}', style: TextStyle(fontSize: 18, color: getColorByRating(currentHistoric!.histGood))),
-          Text('Adresse: ${currentHistoric!.histAdresse}', style: TextStyle(fontSize: 22, color: getColorByRating(currentHistoric!.histGood))),
-          Text('Avis: ${currentHistoric!.histAvis}', style: const TextStyle(fontSize: 18)),
-          Text('Détails: ${currentHistoric!.histDetail}', style: const TextStyle(fontSize: 16)),
+          Text('${currentHistoric!.histName} : #${currentHistoric!.histDate}#',
+              style: TextStyle(
+                  fontSize: 20,
+                  color: getColorByRating(currentHistoric!.histGood))),
+          Text('Exposants: <${currentHistoric!.histNbExpo}>',
+              style: const TextStyle(fontSize: 20)),
+          Text('Commune: ${currentHistoric!.histVille}',
+              style: TextStyle(
+                  fontSize: 18,
+                  color: getColorByRating(currentHistoric!.histGood))),
+          Text('Adresse: ${currentHistoric!.histAdresse}',
+              style: TextStyle(
+                  fontSize: 22,
+                  color: getColorByRating(currentHistoric!.histGood))),
+          Text('Avis: ${currentHistoric!.histAvis}',
+              style: const TextStyle(fontSize: 18)),
+          Text('Détails: ${currentHistoric!.histDetail}',
+              style: const TextStyle(fontSize: 16)),
+          if (currentHistoric!.heureArrivee.isNotEmpty)
+            Text('Arrivée: ${currentHistoric!.heureArrivee}',
+                style: const TextStyle(fontSize: 16)),
+          buildContexte(),
         ],
       ),
     );
   }
 
+  // Affichage conditionnel des champs « contexte » (export enrichi).
+  // N'affiche que les indicateurs renseignés (= 1) pour la visite courante.
+  Widget buildContexte() {
+    final h = currentHistoric!;
+    final badges = <Widget>[
+      if (h.pluie == 1) _badge('🌧 Pluie', Colors.blueGrey),
+      if (h.arriveeTard == 1) _badge('⏰ Arrivée tardive', Colors.brown),
+      if (h.parking == 1) _badge('🅿️ Parking', Colors.indigo),
+      if (h.rues == 1) _badge('🏘️ Rues', Colors.indigo),
+      if (h.stade == 1) _badge('🏟️ Stade', Colors.indigo),
+      if (h.espace == 1) _badge('🌳 Espace', Colors.indigo),
+    ];
+    if (badges.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(spacing: 8, runSpacing: 8, children: badges),
+    );
+  }
+
+  Widget _badge(String label, MaterialColor color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.shade300),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 14, color: color.shade800)),
+    );
+  }
+
   Color getColorByRating(int rating) {
     switch (rating) {
-      case 1: return Colors.red;
-      case 2: return Colors.orange;
-      case 3: return Colors.blue;
-      case 4: return Colors.greenAccent;
-      default: return Colors.grey;
+      case 1:
+        return Colors.red;
+      case 2:
+        return Colors.orange;
+      case 3:
+        return Colors.blue;
+      case 4:
+        return Colors.greenAccent;
+      default:
+        return Colors.grey;
     }
   }
 
