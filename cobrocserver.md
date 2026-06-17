@@ -112,6 +112,47 @@ SERVER_HOST=0.0.0.0
 SERVER_PORT=8765
 ```
 
+### Démarrage automatique au login (macOS — LaunchAgent)
+
+Le serveur peut démarrer tout seul à l'ouverture de session (et se relancer s'il
+crashe) via un **LaunchAgent** : `~/Library/LaunchAgents/com.pml.cobroc-server.plist`.
+
+> ⚠️ Un LaunchAgent démarre **à la connexion de l'utilisateur**, pas au boot avant
+> login (un LaunchDaemon root serait inadapté : il faut le venv et les fichiers de
+> l'utilisateur). En pratique : reboot → login → serveur dispo sur `localhost:8765`.
+
+Points clés du plist :
+- lance `server/.venv/bin/uvicorn server:app --host 0.0.0.0 --port 8765` ;
+- `WorkingDirectory` = `server/` (**indispensable** : chemins relatifs `db/`, `.env`) ;
+- `RunAtLoad` (démarre au login) + `KeepAlive` (relance si arrêt) + `ThrottleInterval 10` ;
+- logs dans `~/Library/Logs/cobroc-server.log`.
+
+> Le plist vit dans `~/Library/LaunchAgents` (**hors dépôt git**) : c'est de la config
+> machine locale, normal qu'il ne soit pas versionné.
+
+Commandes de gestion (`gui/<UID>`, UID = `id -u`, ici `501`) :
+
+```bash
+# (ré)installer / charger
+launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.pml.cobroc-server.plist
+launchctl enable    gui/501/com.pml.cobroc-server
+
+# état / logs
+launchctl print gui/501/com.pml.cobroc-server | grep -E "state|pid"
+tail -f ~/Library/Logs/cobroc-server.log
+
+# redémarrer / arrêter maintenant (sans reboot)
+launchctl kickstart -k gui/501/com.pml.cobroc-server   # redémarre
+launchctl bootout      gui/501/com.pml.cobroc-server   # arrête + décharge
+
+# désactiver le démarrage auto définitivement
+launchctl bootout gui/501/com.pml.cobroc-server
+rm ~/Library/LaunchAgents/com.pml.cobroc-server.plist
+```
+
+> Quand l'agent tourne, ne pas lancer un second `uvicorn` à la main sur le port 8765
+> (conflit de port).
+
 ---
 
 ## 4. Export en pratique — les commandes
