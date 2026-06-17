@@ -8,8 +8,8 @@ __pycache__/
 # Config locale (contient la clé API)
 .env
 
-# Base SQLite (copiée depuis/vers cobroc)
-db/historibroc.db
+# Base SQLite : versionnée dans le monorepo (source de vérité de listHistoric).
+# Seuls les backups horodatés sont ignorés.
 db/*.backup-*.db
 
 # macOS

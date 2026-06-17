@@ -10,7 +10,7 @@ import sqlite3
 import argparse
 from pathlib import Path
 
-DEFAULT_DART = Path(__file__).parent.parent.parent / "cobroc/lib/historibroc.dart"
+DEFAULT_DART = Path(__file__).parent.parent.parent / "lib/historibroc.dart"
 DEFAULT_DB   = Path(__file__).parent.parent / "db/historibroc.db"
 SCHEMA       = Path(__file__).parent.parent / "db/schema.sql"
 

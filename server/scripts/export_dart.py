@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 DEFAULT_DB  = Path(__file__).parent.parent / "db/historibroc.db"
-DEFAULT_OUT = Path(__file__).parent.parent.parent / "cobroc/lib/historibroc.dart"
+DEFAULT_OUT = Path(__file__).parent.parent.parent / "lib/historibroc.dart"
 
 
 def _escape(s: str) -> str:

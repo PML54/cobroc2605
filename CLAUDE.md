@@ -65,6 +65,24 @@ Ne JAMAIS omettre cet en-tête, y compris sur les fichiers existants modifiés.
 - Ne pas faire : refactor massif non demandé, changement de lib d'état,
   modification du comportement de scraping Brocabrac sans validation, publication.
 
+## Monorepo — `server/` (tooling données Python)
+
+Le dossier **`server/`** contient l'outillage data (ex-repo `cobroc-server`,
+intégré par `git subtree`) : serveur FastAPI de saisie des visites, base SQLite
+`server/db/historibroc.db`, et scripts de migration/export. Voir
+`server/CLAUDE.md` pour le détail (stack, routes, schéma des tables).
+
+- **Pipeline données** : la base SQLite est la **source de vérité**.
+  `python server/scripts/export_dart.py` (n'exporte que `validated = 1`) régénère
+  `lib/historibroc.dart` ; l'app Flutter lit **ce `.dart`**, jamais la `.db`
+  (données bundlées au build → offline). Rebuild de l'app indispensable ensuite.
+- La base `server/db/historibroc.db` est **versionnée** (source de `listHistoric`) ;
+  seuls les backups `*.backup-*.db` sont gitignorés.
+- **Secrets** : `server/.env` (clé API Anthropic du validateur) reste gitignoré —
+  ne jamais le committer.
+- Conventions Python : style propre à `server/` (docstring d'en-tête), l'en-tête
+  Dart obligatoire ne s'applique **qu'aux fichiers `.dart`**.
+
 <!-- ════════════════════════════════════════════════════════════════
      FIN DU BLOC CONVENTIONS. Le contenu /init original suit ci-dessous.
      ════════════════════════════════════════════════════════════════ -->
