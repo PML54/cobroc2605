@@ -109,24 +109,51 @@ SERVER_PORT=8765
 
 ---
 
-## 4. Mettre à jour les données de l'app (procédure)
+## 4. Export en pratique — les commandes
+
+> ⚠️ `export_dart.py` n'utilise que la **bibliothèque standard** Python
+> (`sqlite3`, `argparse`, `datetime`, `pathlib`). Pour **juste exporter** la base
+> existante, **pas besoin de venv, ni du serveur, ni de la clé API**. Le venv +
+> `.env` ne servent qu'à **saisir/valider** de nouvelles visites (§3).
+
+### Export simple (cas courant — la base a déjà des entrées validées)
 
 ```bash
-cd server
-
-# 1. (saisie) ajouter / corriger des visites via l'appli web → validées par l'agent
-
-# 2. régénérer le fichier Dart depuis la base (n'exporte que validated = 1)
-python scripts/export_dart.py             # écrit ../lib/historibroc.dart
-#   variante via l'API :
-#   curl http://localhost:8765/export/dart > ../lib/historibroc.dart
-
-# 3. vérifier que le Dart généré est sain
-cd .. && dart analyze lib/historibroc.dart
-
-# 4. rebuild / redéployer l'app (étape indispensable, données bundlées)
-flutter build apk         # ou ios / web, ou flutter run
+cd /Users/pml/StudioProjects/cobroc/server
+python3 scripts/export_dart.py            # lit db/historibroc.db → écrit ../lib/historibroc.dart
 ```
+
+### Vérifier + rebuild
+
+```bash
+cd /Users/pml/StudioProjects/cobroc
+dart analyze lib/historibroc.dart         # contrôle que le .dart généré est sain
+flutter run                               # ou : flutter build apk / ios / web
+```
+
+### Tout en un bloc
+
+```bash
+cd /Users/pml/StudioProjects/cobroc/server && python3 scripts/export_dart.py \
+  && cd .. && dart analyze lib/historibroc.dart \
+  && flutter run
+```
+
+### Variantes utiles
+
+```bash
+# base ou sortie personnalisées
+python3 scripts/export_dart.py --db db/historibroc.db --out ../lib/historibroc.dart
+
+# variante via l'API (seulement si le serveur tourne)
+curl http://localhost:8765/export/dart > ../lib/historibroc.dart
+
+# voir ce qui changerait AVANT de committer
+cd /Users/pml/StudioProjects/cobroc && git diff lib/historibroc.dart
+```
+
+> Rappel : `python3 scripts/export_dart.py` n'exporte que `validated = 1`, écrase
+> `lib/historibroc.dart`, et **le rebuild Flutter est indispensable** (données bundlées).
 
 ---
 
