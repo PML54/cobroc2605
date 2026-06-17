@@ -27,13 +27,15 @@ Swagger UI : `http://<IP_DU_MAC>:8765/docs`
 
 ```
 server.py                           # Application FastAPI — toutes les routes
+static/index.html                   # Appli web de saisie d'une visite (servie sur / et /static)
 agent/validator.py                  # Agent Claude Haiku : valide chaque entrée avant insertion
 db/schema.sql                       # DDL SQLite (tables lieux + historic + index)
-db/historibroc.db                   # Base SQLite (2236 entrées + 672 lieux)
+db/historibroc.db                   # Base SQLite (~2237 entrées + 672 lieux)
 scripts/import_dart.py              # Migration initiale depuis historibroc.dart
 scripts/export_dart.py              # Export base → lib/historibroc.dart (projet Flutter cobroc)
 scripts/migrate_lieux.py            # Migration 1 : remplace la VIEW lieux par une TABLE, ajoute lieu_id à historic
 scripts/migrate_historic_lieux.py   # Migration 2 : peuple lieux depuis historic et relie lieu_id
+scripts/migrate_lieu_endroit.py     # Migration 3 : ajoute parking/rues/stade/espace à lieux
 requirements.txt                    # fastapi, uvicorn, anthropic, python-dotenv
 .env                                # ANTHROPIC_API_KEY + DB_PATH (ne pas commiter)
 ```
@@ -82,18 +84,30 @@ requirements.txt                    # fastapi, uvicorn, anthropic, python-dotenv
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
-| GET | `/lieux` | Liste (filtres : `ville`, `cp`, `sort`) |
+| GET | `/lieux` | Liste (filtres : `ville` = **début de ville**, `cp`, `sort`) |
 | GET | `/lieux/{id}` | Lieu par ID |
 | POST | `/lieux` | Créer un lieu |
 | PUT | `/lieux/{id}` | Modifier un lieu |
 | DELETE | `/lieux/{id}` | Supprimer (refusé si utilisé dans historic) |
-| GET | `/historic` | Liste (filtres : `ville`, `name`, `validated`, `limit`, `offset`) |
+| GET | `/historic` | Liste (filtres : `ville` = **début de ville**, `name`, `validated`, `sort`, `limit`, `offset`) |
 | GET | `/historic/{id}` | Entrée par ID |
 | POST | `/historic` | Créer (déclenche validation agent) |
 | PUT | `/historic/{id}` | Modifier (re-valide via agent) |
 | DELETE | `/historic/{id}` | Supprimer |
 | GET | `/export/dart` | Génère `historibroc.dart` en texte brut |
 | GET | `/stats` | Total, validés, en attente, répartition PML/FRA |
+
+Le filtre `ville` (sur `/lieux` et `/historic`) matche **en début de nom uniquement** (`{ville}%`), sans accents et insensible à la casse (fonction `NOACCENT`).
+
+## Appli web de saisie (`static/index.html`)
+
+Formulaire « Nouvelle visite » servi sur `/` (redirige vers `/static/index.html`). Page HTML/CSS/JS autonome, sans build.
+
+- **Visiteur** : bascule PML / FRA. **Date** : pré-remplie sur le **jour courant** (modifiable par le user), **obligatoire**. **Note** : étoiles 0–5.
+- **Lieu** : recherche par **début de ville, dès la 1re lettre, forcée en MAJUSCULES** ; la liste affiche le couple **ville + adresse** (+ nb de visites) pour distinguer les lieux d'une même ville. La sélection remplit CP/adresse en **lecture seule** et fixe `lieu_id` (obligatoire pour enregistrer).
+- **Nouveau lieu** : créé dans une **modale dédiée** (Ville, CP, Adresse, Nom/Récurrence optionnels, cases **Endroit** parking/rues/stade/espace) → `POST /lieux` puis auto-sélection dans le CR.
+- **Détail des achats** : lignes **description + prix entier** distinctes, recomposées dans `hist_detail` au format `desc=prix€+…` (compatible historique).
+- Les champs ville/CP/adresse neutralisent l'autofill navigateur (ids neutres + `readonly` levé au focus).
 
 ## Variables d'environnement (`.env`)
 

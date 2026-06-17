@@ -115,6 +115,9 @@ class HistoricIn(BaseModel):
     hist_avis:        str = ""
     hist_detail:      str = ""
     lieu_id:          int | None = None
+    heure_arrivee:    str = ""
+    pluie:            int = Field(0, ge=0, le=1)
+    arrivee_tard:     int = Field(0, ge=0, le=1)
 
 
 class HistoricOut(BaseModel):
@@ -135,6 +138,9 @@ class HistoricOut(BaseModel):
     agent_notes:      str
     created_at:       str
     lieu_id:          int | None = None
+    heure_arrivee:    str = ""
+    pluie:            int = 0
+    arrivee_tard:     int = 0
 
 
 # ── Routes ──────────────────────────────────────────────────────────────────────
@@ -213,12 +219,12 @@ def create_historic(entry: HistoricIn):
           (hist_name, hist_date, hist_good, hist_ville, hist_code_postal,
            hist_adresse, hist_nb_expo, hist_pml_dep, hist_fra_dep,
            hist_maison_dep, hist_avis, hist_detail, validated, agent_notes,
-           ville_normalized, lieu_id)
+           ville_normalized, lieu_id, heure_arrivee, pluie, arrivee_tard)
         VALUES
           (:hist_name, :hist_date, :hist_good, :hist_ville, :hist_code_postal,
            :hist_adresse, :hist_nb_expo, :hist_pml_dep, :hist_fra_dep,
            :hist_maison_dep, :hist_avis, :hist_detail, :validated, :agent_notes,
-           :ville_normalized, :lieu_id)
+           :ville_normalized, :lieu_id, :heure_arrivee, :pluie, :arrivee_tard)
     """
     data["validated"]        = validated
     data["agent_notes"]      = agent_notes
@@ -264,7 +270,8 @@ def update_historic(entry_id: int, entry: HistoricIn):
           hist_pml_dep=:hist_pml_dep, hist_fra_dep=:hist_fra_dep,
           hist_maison_dep=:hist_maison_dep, hist_avis=:hist_avis,
           hist_detail=:hist_detail, validated=:validated, agent_notes=:agent_notes,
-          ville_normalized=:ville_normalized, lieu_id=:lieu_id
+          ville_normalized=:ville_normalized, lieu_id=:lieu_id,
+          heure_arrivee=:heure_arrivee, pluie=:pluie, arrivee_tard=:arrivee_tard
         WHERE id=:id
     """
     data["validated"]        = validated

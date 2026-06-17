@@ -10,6 +10,7 @@ __pycache__/
 
 # Base SQLite (copiée depuis/vers cobroc)
 db/historibroc.db
+db/*.backup-*.db
 
 # macOS
 .DS_Store

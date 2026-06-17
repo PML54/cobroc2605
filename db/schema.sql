@@ -33,7 +33,10 @@ CREATE TABLE IF NOT EXISTS historic (
   agent_notes      TEXT    NOT NULL DEFAULT '',
   created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
   ville_normalized TEXT,
-  lieu_id          INTEGER REFERENCES lieux(id)
+  lieu_id          INTEGER REFERENCES lieux(id),
+  heure_arrivee    TEXT    NOT NULL DEFAULT '',
+  pluie            INTEGER NOT NULL DEFAULT 0,
+  arrivee_tard     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_ville      ON historic(hist_ville);

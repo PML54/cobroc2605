@@ -440,14 +440,16 @@
   }
   #nl_error.show { display: block; }
 
-  /* Endroit : cases à cocher */
-  .endroit-group {
+  /* Groupes de cases à cocher (Endroit, Conditions) */
+  .endroit-group, .cond-group {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 8px;
     margin-top: 6px;
   }
-  .endroit-group .chk {
+  .endroit-group { grid-template-columns: 1fr 1fr; }
+  .cond-group    { grid-template-columns: 1fr; }
+
+  .chk {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -463,13 +465,13 @@
     letter-spacing: 0;
     cursor: pointer;
   }
-  .endroit-group .chk input {
+  .chk input {
     width: 18px;
     height: 18px;
     accent-color: var(--primary);
     cursor: pointer;
   }
-  .endroit-group .chk:has(input:checked) {
+  .chk:has(input:checked) {
     border-color: var(--primary);
     background: #fdf5ee;
     color: var(--primary-dark);
@@ -510,6 +512,20 @@
           <span class="star" data-v="4">★</span>
           <span class="star" data-v="5">★</span>
           <span class="star-zero" id="star-zero" title="Remettre à 0">✕</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2" style="margin-top:14px">
+      <div>
+        <label for="heure_arrivee">Heure d'arrivée</label>
+        <input type="time" id="heure_arrivee" autocomplete="off">
+      </div>
+      <div>
+        <label>Conditions</label>
+        <div class="cond-group">
+          <label class="chk"><input type="checkbox" id="chk_pluie"> Pluie</label>
+          <label class="chk"><input type="checkbox" id="chk_tard"> Arrivée trop tard</label>
         </div>
       </div>
     </div>
@@ -629,6 +645,12 @@ let selectedLieuId = null; // id du lieu sélectionné dans le dropdown, null si
 let debounceTimer = null;
 let dropFocused = -1;
 let dropItems = [];
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+document.getElementById('hist_date').value = today();
 
 // ── Visiteur ───────────────────────────────────────────────────────────────
 function setName(n) {
@@ -922,6 +944,9 @@ document.getElementById('mainForm').addEventListener('submit', async e => {
     hist_avis:        document.getElementById('hist_avis').value.trim(),
     hist_detail:      buildDetail(),
     lieu_id,
+    heure_arrivee:    document.getElementById('heure_arrivee').value,
+    pluie:            document.getElementById('chk_pluie').checked ? 1 : 0,
+    arrivee_tard:     document.getElementById('chk_tard').checked  ? 1 : 0,
   };
 
   try {
@@ -987,13 +1012,15 @@ function resetForm() {
   document.getElementById('btn-pml').classList.remove('active');
   document.getElementById('btn-fra').classList.remove('active');
   renderStars();
-  document.getElementById('hist_date').value = '';
+  document.getElementById('hist_date').value = today();
   villeInput.value = '';
   ['fpc','floc','hist_nb_expo',
    'hist_pml_dep','hist_fra_dep','hist_maison_dep',
-   'hist_avis'].forEach(id => {
+   'hist_avis','heure_arrivee'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('chk_pluie').checked = false;
+  document.getElementById('chk_tard').checked = false;
   resetAchats();
 }
 </script>
